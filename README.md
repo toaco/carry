@@ -2,13 +2,13 @@
 
 ## Summary
 
-A python library to migrate data between different table in different database.
+A python library to migrate data between different tables in different databases.
 
 ## Feature
 
-- Migrating data from many source database to one destination database.
+- Migrating data from many source databases to one destination database.
   - The database table structures can be completely different between source databases and destination database.
-  - write SQL base on a previously migrated table to migrate subsequent table.
+  - write SQL based on a previously migrated table to migrate subsequent table.
   - execute initial SQL after migration has been finished.
 
 ## Example
@@ -20,7 +20,7 @@ First, write a config file:
 ```PYTHON
 import os
 
-# SQL folder location. Set as current working directory by default
+# SQL folder location. Set it as current working directory by default
 ROOT_DIR = os.path.curdir
 
 DATABASES = {
@@ -52,7 +52,7 @@ INITIALS = [
 ]
 ```
 
-Then create some file structured under `ROOT_DIR` as below:
+Then create some files structured under `ROOT_DIR` as below:
 
 ```bash
 |--sdb1
@@ -92,7 +92,7 @@ Python 2.7
 
 ## Contribute
 
-This project only be tested in one situation: migration from SQL Server 2000 to MySQL 5.6.  Migration of other situations are under developing.
+This project was only tested in one situation: migration from SQL Server 2000 to MySQL 5.6.  Migration of other situations are under developing.
 
 The library is very simple, only 100 lines of code. If you want to contribute, you can:
 
@@ -100,4 +100,4 @@ The library is very simple, only 100 lines of code. If you want to contribute, y
 - write code
 - pull request
 
-If you have any question or advice, hope your issue.
+Looking forward to your issue if you have any question or advice.

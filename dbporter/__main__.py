@@ -81,7 +81,7 @@ def create_view(name, sdb, sql):
 
 
 def main(refresh=True):
-    # if refresh is True, insert all table into destination database
+    # if refresh is True, insert all tables into destination database
     # if refresh is False, only insert table of which the last migration was failed
     if refresh:
         orders = config.ORDERS
