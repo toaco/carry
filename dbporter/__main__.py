@@ -45,9 +45,9 @@ def get_df_from_source(name):
         # todo delete this
         header = sql.split('\n', 1)[0]
         if header.count('\t') > 0:
-            df = pd.read_csv(StringIO(sql), sep='\t')
+            df = pd.read_csv(StringIO(sql), sep='\t', dtype=object)
         else:
-            df = pd.read_csv(StringIO(sql))
+            df = pd.read_csv(StringIO(sql), dtype=object)
 
     else:
         if sdb.use_view:
