@@ -127,12 +127,24 @@ def main(refresh=True):
 
     # truncate tables in destination database
     tables = getattr(config, 'TRUNCATES', list(orders))
+    tables = map(lambda x: x[0] if isinstance(x, (list, tuple)) else x, tables)
     truncate(tables)
 
     # insert
     for name in orders:
+        if isinstance(name, (list, tuple)):
+            name, option = name
+        else:
+            option = None
         df = get_df_from_source(name)
         insert(df, name)
+
+        if option and 'post_script' in option:
+            name = option['post_script']
+            print '[EXECUTE SQL SCRIPT IN {}]: {}.sql'.format(
+                dest_name.upper(), name)
+            sql = get_ddb_sql(name)
+            dest.execute(sql)
 
     dump_failed_tables()
 
