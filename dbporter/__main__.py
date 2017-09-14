@@ -126,7 +126,8 @@ def main(refresh=True):
             print 'NOT FRESH\n'
 
     # truncate tables in destination database
-    truncate(list(orders) + config.INITIALS)
+    tables = getattr(config, 'TRUNCATES', list(orders))
+    truncate(tables)
 
     # insert
     for name in orders:
@@ -136,7 +137,7 @@ def main(refresh=True):
     dump_failed_tables()
 
     # execute initial SQL in destination database
-    for name in config.INITIALS:
+    for name in getattr(config, 'INITIALS', ()):
         print '[EXECUTE INITIAL SQL SCRIPT IN {}]: {}.sql'.format(
             dest_name.upper(), name)
         sql = get_ddb_sql(name)
@@ -197,8 +198,8 @@ def insert(df, name):
         df.to_sql(name=name, con=dest, if_exists='append', index=False,
                   chunksize=5000)
         insert_successful_table(name)
-    except SQLAlchemyError as e:
-        print '\n{char:-^80}\n{msg}\n{char:-^80}\n'.format(char='-', msg=e)
+    except SQLAlchemyError:
+        raise
 
 
 if __name__ == '__main__':
