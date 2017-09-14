@@ -1,6 +1,7 @@
 import os
 import pickle
 import tempfile
+from StringIO import StringIO
 
 import pandas as pd
 from sqlalchemy import create_engine, text
@@ -9,25 +10,52 @@ from sqlalchemy.exc import SQLAlchemyError
 import config
 
 
-class SourceDB(object):
+class Source(object):
     def __init__(self):
+        # type in ('csv', 'sql')
+        self.type = None
+        self.name = None
+
+        # if type is sql
         self.engine = None
         self.use_view = None
-        self.name = None
 
 
 source_dbs = {}
 
-dest_db = create_engine(config.DATABASES['dest']['url'], echo=False)
-dest_db_name = config.DATABASES['dest']['name']
-for db in config.DATABASES['sources']:
-    source_db = SourceDB()
-    source_db.engine = create_engine(db['url'], echo=False)
-    source_db.use_view = db.get('use_view', False)
-    source_db.name = db.get('name')
-    source_dbs[db['name']] = source_db
+dest = create_engine(config.DATABASES['dest']['url'], echo=False)
+dest_name = config.DATABASES['dest']['name']
+for source_config in config.DATABASES['sources']:
+    source = Source()
+    if 'url' in source_config:
+        source.type = 'sql'
+        source.engine = create_engine(source_config['url'], echo=False)
+        source.use_view = source_config.get('use_view', False)
+    else:
+        source.type = 'csv'
+    source.name = source_config.get('name')
+    source_dbs[source.name] = source
 
 _path = os.path.join(tempfile.gettempdir(), 'ROMULAN_TOOLS_TEMP_FILE')
+
+
+def get_df_from_source(name):
+    sdb, sql = get_sdb(name), get_sdb_sql(name)
+    if sdb.type == 'csv':
+        # todo delete this
+        header = sql.split('\n', 1)[0]
+        if header.count('\t') > 0:
+            df = pd.read_csv(StringIO(sql), sep='\t')
+        else:
+            df = pd.read_csv(StringIO(sql))
+
+    else:
+        if sdb.use_view:
+            create_view(name, sdb, sql)
+        df = pd.read_sql(sql, sdb.engine)
+    print '[INSERT DATA]: {from_}.{name} -> {into}.{name}'.format(
+        from_=sdb.name, into=dest_name, name=name)
+    return df
 
 
 def load_successful_tables():
@@ -52,14 +80,14 @@ def dump_failed_tables():
 
 def truncate(names):
     if names:
-        print '[TRUNCATE TABLE IN {}]: {}'.format(dest_db_name.upper(),
+        print '[TRUNCATE TABLE IN {}]: {}'.format(dest_name.upper(),
                                                   ', '.join(names))
         sql = """
         SET FOREIGN_KEY_CHECKS = 0;
         {}
         SET FOREIGN_KEY_CHECKS = 1;
         """.format('\n'.join('TRUNCATE {};'.format(name) for name in names))
-        dest_db.execute(sql)
+        dest.execute(sql)
 
 
 def create_view(name, sdb, sql):
@@ -98,23 +126,21 @@ def main(refresh=True):
             print 'NOT FRESH\n'
 
     # truncate tables in destination database
-    truncate(orders + config.INITIALS)
+    truncate(list(orders) + config.INITIALS)
 
     # insert
     for name in orders:
-        sdb, sql = get_sdb(name), get_sdb_sql(name)
-        if sdb.use_view:
-            create_view(name, sdb, sql)
-        insert(sdb, sql, name)
+        df = get_df_from_source(name)
+        insert(df, name)
 
     dump_failed_tables()
 
     # execute initial SQL in destination database
     for name in config.INITIALS:
         print '[EXECUTE INITIAL SQL SCRIPT IN {}]: {}.sql'.format(
-            dest_db_name.upper(), name)
+            dest_name.upper(), name)
         sql = get_ddb_sql(name)
-        dest_db.execute(sql)
+        dest.execute(sql)
 
 
 def get_sdb(name):
@@ -147,7 +173,7 @@ def get_db_name_and_sql_path(name, from_source=True):
         for basedir, dirs, filenames in os.walk(config.ROOT_DIR):
             for filename in filenames:
                 root, ext = os.path.splitext(filename)
-                if ext == '.sql':
+                if ext in ('.sql', '.csv'):
                     dir_ = os.path.basename(basedir)
                     if dir_ in source_dbs:
                         _name_file_mapping['sources'][root] = (
@@ -166,13 +192,10 @@ def get_db_name_and_sql_path(name, from_source=True):
         return _name_file_mapping['dest'][name]
 
 
-def insert(sdb, sql, name):
-    print '[INSERT DATA]: {from_}.{name} -> {into}.{name}'.format(
-        from_=sdb.name, into=dest_db_name, name=name)
+def insert(df, name):
     try:
-        data = pd.read_sql(sql, sdb.engine)
-        data.to_sql(name=name, con=dest_db, if_exists='append', index=False,
-                    chunksize=5000)
+        df.to_sql(name=name, con=dest, if_exists='append', index=False,
+                  chunksize=5000)
         insert_successful_table(name)
     except SQLAlchemyError as e:
         print '\n{char:-^80}\n{msg}\n{char:-^80}\n'.format(char='-', msg=e)
