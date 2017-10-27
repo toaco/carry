@@ -136,11 +136,18 @@ def main(refresh=True):
             name, option = name
         else:
             option = None
+        if option and 'before_script' in option:
+            name = option['before_script']
+            print '[EXECUTE SQL SCRIPT IN {}]: {}.sql'.format(
+                dest_name.upper(), name)
+            sql = get_ddb_sql(name)
+            dest.execute(sql)
+
         df = get_df_from_source(name)
         insert(df, name)
 
-        if option and 'post_script' in option:
-            name = option['post_script']
+        if option and 'after_script' in option:
+            name = option['after_script']
             print '[EXECUTE SQL SCRIPT IN {}]: {}.sql'.format(
                 dest_name.upper(), name)
             sql = get_ddb_sql(name)
