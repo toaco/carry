@@ -69,11 +69,11 @@ def load_successful_tables():
 _successful_tables = []
 
 
-def insert_successful_table(table_name):
-    _successful_tables.append(table_name)
+def insert_successful_table(name):
+    _successful_tables.append(freeze(name))
 
 
-def dump_failed_tables():
+def dump_successful_tables():
     with open(_path, 'w') as fo:
         pickle.dump(_successful_tables, fo)
 
@@ -108,9 +108,37 @@ def create_view(name, sdb, sql):
     sdb.engine.execute(sql_)
 
 
+def freeze(d):
+    if isinstance(d, dict):
+        d = d.items()
+        d.sort()
+        return frozenset((key, freeze(value)) for key, value in d)
+    elif isinstance(d, (list, tuple)):
+        return tuple(freeze(value) for value in d)
+    return d
+
+
+class DFRowProxy(object):
+    """
+    row proxy for DataFrame
+    """
+
+    def __init__(self, idx, row, df):
+        self.__dict__['_df'] = df
+        self.__dict__['_idx'] = idx
+        self.__dict__['_row'] = row
+
+    def __setattr__(self, key, value):
+        self._df.set_value(self._idx, key, value)
+
+    def __getattr__(self, key):
+        return self._row[key]
+
+
 def main(refresh=True):
     # if refresh is True, insert all tables into destination database
-    # if refresh is False, only insert table of which the last migration was failed
+    # if refresh is False, only insert table which the last migration was
+    # failed or which is new in `ORDERS`
     if refresh:
         orders = config.ORDERS
         print 'FRESH\n'
@@ -121,39 +149,55 @@ def main(refresh=True):
             print 'FRESH\n'
         else:
             successful_orders = set(successful_orders)
-            orders = (name for name in config.ORDERS if
-                      name not in successful_orders)
+
+            config_orders = map(freeze, config.ORDERS)
+            orders = list(name for name in config_orders if
+                          name not in successful_orders)
             print 'NOT FRESH\n'
 
     # truncate tables in destination database
-    tables = getattr(config, 'TRUNCATES', list(orders))
+    if refresh:
+        tables = getattr(config, 'TRUNCATES', list(orders))
+    else:
+        tables = orders
+
     tables = map(lambda x: x[0] if isinstance(x, (list, tuple)) else x, tables)
     truncate(tables)
+    try:
+        # insert
+        for name in orders:
+            if isinstance(name, (list, tuple)):
+                table_name, option = name
+            else:
+                table_name = name
+                option = None
+            if option and 'before_script' in option:
+                script_name = option['before_script']
+                print '[EXECUTE SQL SCRIPT IN {}]: {}.sql'.format(
+                    dest_name.upper(), script_name)
+                sql = get_ddb_sql(script_name)
+                dest.execute(sql)
 
-    # insert
-    for name in orders:
-        if isinstance(name, (list, tuple)):
-            name, option = name
-        else:
-            option = None
-        if option and 'before_script' in option:
-            name = option['before_script']
-            print '[EXECUTE SQL SCRIPT IN {}]: {}.sql'.format(
-                dest_name.upper(), name)
-            sql = get_ddb_sql(name)
-            dest.execute(sql)
+            df = get_df_from_source(table_name)
+            if option and 'before_insert' in option:
+                callback = option['before_insert']
+                for index, row in df.iterrows():
+                    row = DFRowProxy(index, row, df)
+                    callback(row)
 
-        df = get_df_from_source(name)
-        insert(df, name)
+            insert(df, table_name)
 
-        if option and 'after_script' in option:
-            name = option['after_script']
-            print '[EXECUTE SQL SCRIPT IN {}]: {}.sql'.format(
-                dest_name.upper(), name)
-            sql = get_ddb_sql(name)
-            dest.execute(sql)
+            if option and 'after_script' in option:
+                script_name = option['after_script']
+                print '[EXECUTE SQL SCRIPT IN {}]: {}.sql'.format(
+                    dest_name.upper(), script_name)
+                sql = get_ddb_sql(script_name)
+                dest.execute(sql)
 
-    dump_failed_tables()
+            insert_successful_table(name)
+    except SQLAlchemyError:
+        dump_successful_tables()
+        raise
 
     # execute initial SQL in destination database
     for name in getattr(config, 'INITIALS', ()):
@@ -213,12 +257,8 @@ def get_db_name_and_sql_path(name, from_source=True):
 
 
 def insert(df, name):
-    try:
-        df.to_sql(name=name, con=dest, if_exists='append', index=False,
-                  chunksize=5000)
-        insert_successful_table(name)
-    except SQLAlchemyError:
-        raise
+    df.to_sql(name=name, con=dest, if_exists='append', index=False,
+              chunksize=5000)
 
 
 if __name__ == '__main__':
