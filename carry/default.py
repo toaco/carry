@@ -5,7 +5,7 @@ from carry.utils import DefaultDict
 
 class RDBGetConfig(DefaultDict):
     default = {
-        'chunksize': 1000
+        'chunk_size': 10000
     }
 
 
@@ -13,7 +13,7 @@ class RDBPutConfig(DefaultDict):
     default = {
         'if_exists': 'append',
         'index': False,
-        'chunksize': 5000
+        'chunk_size': 10000
     }
 
 

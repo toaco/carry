@@ -3,6 +3,7 @@ import os
 import pandas
 import sqlalchemy
 
+from carry.dataframe import DFIteratorAdapter
 from carry.dialects import SqlHelperFactory
 from carry.logger import logger
 
@@ -162,7 +163,10 @@ class RDB(Store):
             if self.create_view:
                 self.sql_helper.create_view(self.view_prefix + '_' + name, sql)
         data = self._read_sql(sql, **config)
-        return data
+        if config.get('chunk_size'):
+            return DFIteratorAdapter(data)
+        else:
+            return DFIteratorAdapter([data])
 
     def put(self, name, data, **config):
         try:
@@ -180,11 +184,20 @@ class RDB(Store):
                 return fo.read().decode('utf-8')
 
     def _read_sql(self, sql, **config):
+        config = self._rename_chunk_size(config)
         if config.get('chunksize', None):
             return pandas.read_sql(sql, self.engine, **config)
         return [pandas.read_sql(sql, self.engine, **config), ]
 
+    @staticmethod
+    def _rename_chunk_size(config):
+        if 'chunk_size' in config:
+            config['chunksize'] = config['chunk_size']
+            del config['chunk_size']
+        return config
+
     def _to_sql(self, name, data, **config):
+        config = self._rename_chunk_size(config)
         data.to_sql(name=name, con=self.engine, **config)
 
     @convert_table_name
