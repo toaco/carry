@@ -19,7 +19,7 @@ class DFAdapter(object):
     def __iter__(self):
         # returned row was a copy of row in source
         for row in self.df.iterrows():
-            yield DFRowAdapter(row)
+            yield DFRowAdapter(row[1])
 
     def __len__(self):
         return self.df.shape[0]
@@ -32,7 +32,7 @@ class DFRowAdapter(object):
     """adapter for row in pandas DataFrame"""
 
     def __init__(self, row):
-        self.__dict__['_row'] = row[1]
+        self.__dict__['_row'] = row
 
     @classmethod
     def concat(cls, rows):
@@ -52,3 +52,6 @@ class DFRowAdapter(object):
 
     def __getattr__(self, key):
         return self[key]
+
+    def copy(self):
+        return DFRowAdapter(self.__dict__['_row'].copy(deep=True))

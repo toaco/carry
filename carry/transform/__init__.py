@@ -1,3 +1,7 @@
+class NoResultFound(Exception):
+    pass
+
+
 class Cursor(object):
     def __init__(self, data):
         self._data = data
@@ -9,7 +13,7 @@ class Cursor(object):
         try:
             return self._iterator.next()
         except StopIteration:
-            raise LookupError
+            raise NoResultFound
 
     def __iter__(self):
         for chunk in self._data:

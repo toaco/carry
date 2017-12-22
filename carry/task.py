@@ -3,7 +3,7 @@ from tqdm import tqdm
 from carry import logger
 from carry.default import RDBGetConfig, RDBPutConfig, CSVPutConfig, CSVGetConfig, RDBLoadConfig
 from carry.store import RDB, CSV
-from carry.transform import Dest, Cursor
+from carry.transform import Dest, Cursor, NoResultFound
 
 
 class TaskClassifier(object):
@@ -15,13 +15,27 @@ class TaskClassifier(object):
         for task in self.tasks:
             if isinstance(task, (list, tuple)):
                 task, _ = task
-
-            if '.' not in task:
-                tables.append(task)
-            elif '.sql' in task:
-                tables.append(task.split('.sql')[0])
+                if '.' not in task:
+                    tables.append(task)
+                elif '.sql' in task:
+                    ets = _
+                    if not ets:
+                        pass
+                    elif isinstance(ets, (str, unicode)):
+                        tables.append(task.split('.sql')[1])
+                    elif isinstance(ets, (list, tuple)):
+                        tables.extend(ets)
+                    else:
+                        raise NotImplementedError
+                else:
+                    raise NotImplementedError
             else:
-                raise NotImplementedError
+                if '.' not in task:
+                    tables.append(task)
+                elif '.sql' in task:
+                    tables.append(task.split('.sql')[0])
+                else:
+                    raise NotImplementedError
         return tables
 
 
@@ -137,7 +151,7 @@ class RDBToRDBTask(Task):
                             put_config=self.put_config)
                 try:
                     self._callback(cursor, dest)
-                except LookupError:
+                except NoResultFound:
                     pass
                 finally:
                     dest.commit()

@@ -3,6 +3,7 @@ import imp
 from carry.logger import logger
 from carry.store import StoreFactory
 from carry.task import TaskFactory, TaskClassifier
+from carry.transform import NoResultFound
 
 
 def run(config, task_ids=None):
