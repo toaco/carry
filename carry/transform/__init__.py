@@ -3,9 +3,10 @@ class NoResultFound(Exception):
 
 
 class Cursor(object):
-    def __init__(self, data):
+    def __init__(self, data, fetch_callback=None):
         self._data = data
         self._iterator = iter(self)
+        self._fetch_callback = fetch_callback
 
     def fetch(self):
         """return the next row of table,if don't have next row,
@@ -17,16 +18,18 @@ class Cursor(object):
 
     def __iter__(self):
         for chunk in self._data:
+            num = 0
             for row in chunk:
+                num += 1
                 yield row
+            self._fetch_callback(num)
 
 
 class Dest(object):
-    def __init__(self, dest_store, table, chunk_size, commit_callback, put_config):
+    def __init__(self, dest_store, table, chunk_size, put_config):
         self._dest_store = dest_store
         self._table = table
         self._chunk_size = chunk_size
-        self._commit_callback = commit_callback
         self._put_config = put_config
         self._data = []
 
@@ -41,7 +44,6 @@ class Dest(object):
         if self._data:
             data = type(self._data[0]).concat(self._data)
             self._dest_store.put(self._table, data, **self._put_config)
-            self._commit_callback(len(self._data))
             self._data = []
 
 

@@ -145,10 +145,9 @@ class RDBToRDBTask(Task):
         count = self.source.count(self.table)
         with tqdm(total=count, unit='rows') as bar:
             if self._callback:
-                cursor = Cursor(data)
+                cursor = Cursor(data, fetch_callback=bar.update)
                 chunk_size = self.get_config.get('chunk_size')
-                dest = Dest(self.dest, self.table, chunk_size, commit_callback=bar.update,
-                            put_config=self.put_config)
+                dest = Dest(self.dest, self.table, chunk_size, put_config=self.put_config)
                 try:
                     self._callback(cursor, dest)
                 except NoResultFound:
