@@ -5,6 +5,8 @@ from carry.store import StoreFactory
 from carry.task import TaskFactory, TaskClassifier
 from carry.transform import NoResultFound
 
+__version__ = '0.1'
+
 
 def run(config, task_ids=None):
     if isinstance(config, str):
