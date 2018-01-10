@@ -33,9 +33,7 @@ class Carry(object):
                 i, [source['name'] for source in sources], dest['name'])
             )
             self._execute_task(sources, dest, orders)
-            logger.info('Finish task {}'.format(
-                i, [source['name'] for source in sources], dest['name'])
-            )
+            logger.info('Finish task {}'.format(i))
 
     def _execute_task(self, sources, dest, orders):
         # truncate
