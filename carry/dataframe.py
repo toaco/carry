@@ -27,6 +27,9 @@ class DFAdapter(object):
     def to_sql(self, *args, **kwargs):
         return self.df.to_sql(*args, **kwargs)
 
+    def to_csv(self, *args, **kwargs):
+        return self.df.to_csv(*args, **kwargs)
+
 
 class DFRowAdapter(object):
     """adapter for row in pandas DataFrame"""
