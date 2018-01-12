@@ -180,7 +180,7 @@ class RDB(Store):
 
     def _get_sql(self, name):
         if name in self.name_and_sql_paths:
-            with open(self.name_and_sql_paths[name]) as fo:
+            with open(self.name_and_sql_paths[name], 'rb') as fo:
                 return fo.read().decode('utf-8')
 
     def _read_sql(self, sql, **config):
