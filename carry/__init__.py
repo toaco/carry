@@ -2,8 +2,10 @@ import imp
 
 from carry.logger import logger
 from carry.store import StoreFactory
-from carry.task import TaskFactory, TaskClassifier
+from carry.task import TaskFactory, TaskClassifier, TableTaskConfig
 from carry.transform import NoResultFound
+
+table = TableTaskConfig
 
 __version__ = '0.1'
 

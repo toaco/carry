@@ -22,7 +22,8 @@ class Cursor(object):
             for row in chunk:
                 num += 1
                 yield row
-            self._fetch_callback(num)
+            if self._fetch_callback:
+                self._fetch_callback(num)
 
 
 class Dest(object):

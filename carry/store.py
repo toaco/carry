@@ -113,6 +113,13 @@ class Store(object):
         raise NotImplementedError
 
 
+def rename_chunk_size(config):
+    if 'chunk_size' in config:
+        config['chunksize'] = config['chunk_size']
+        del config['chunk_size']
+    return config
+
+
 class RDB(Store):
     def __init__(self, name, url, create_view=False, view_prefix='', tables=None, echo=False):
         self.url = url
@@ -184,20 +191,13 @@ class RDB(Store):
                 return fo.read().decode('utf-8')
 
     def _read_sql(self, sql, **config):
-        config = self._rename_chunk_size(config)
+        config = rename_chunk_size(config)
         if config.get('chunksize', None):
             return pandas.read_sql(sql, self.engine, **config)
         return [pandas.read_sql(sql, self.engine, **config), ]
 
-    @staticmethod
-    def _rename_chunk_size(config):
-        if 'chunk_size' in config:
-            config['chunksize'] = config['chunk_size']
-            del config['chunk_size']
-        return config
-
     def _to_sql(self, name, data, **config):
-        config = self._rename_chunk_size(config)
+        config = rename_chunk_size(config)
         data.to_sql(name=name, con=self.engine, **config)
 
     @convert_table_name
@@ -261,7 +261,11 @@ class CSV(Store):
 
     @convert_table_name
     def get(self, name, **config):
-        pass
+        data = self._read_csv(name, config)
+        if config.get('chunksize'):
+            return DFIteratorAdapter(data)
+        else:
+            return DFIteratorAdapter([data])
 
     def put(self, name, data, **config):
         path = self.get_path(name)
@@ -288,3 +292,8 @@ class CSV(Store):
             # for not existed table
             name = name
         return os.path.join(self.folder, name + '.csv')
+
+    def _read_csv(self, name, config):
+        config = rename_chunk_size(config)
+        path = self.get_path(name)
+        return pandas.read_csv(path, **config)

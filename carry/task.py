@@ -1,9 +1,20 @@
 from tqdm import tqdm
 
 from carry import logger
-from carry.default import RDBGetConfig, RDBPutConfig, CSVPutConfig, CSVGetConfig, RDBLoadConfig
+from carry.default import RDBGetConfig, RDBPutConfig, CSVPutConfig, CSVGetConfig
 from carry.store import RDB, CSV
 from carry.transform import Dest, Cursor, NoResultFound
+
+
+class TableTaskConfig(object):
+    def __init__(self, name, transformer=None, header=None, get_config=None, put_config=None,
+                 mode=None):
+        self.name = name
+        self.transformer = transformer
+        self.header = header
+        self.get_config = get_config
+        self.put_config = put_config
+        self.mode = mode
 
 
 class TaskClassifier(object):
@@ -29,6 +40,8 @@ class TaskClassifier(object):
                         raise NotImplementedError
                 else:
                     raise NotImplementedError
+            elif isinstance(task, TableTaskConfig):
+                tables.append(task.name)
             else:
                 if '.' not in task:
                     tables.append(task)
@@ -42,12 +55,22 @@ class TaskClassifier(object):
 class TaskFactory(object):
     @classmethod
     def create(cls, stores, sources, dest, subtask):
+        # instance
+        if isinstance(subtask, TableTaskConfig):
+            return cls._create_table_task(
+                stores, sources, dest, subtask.name, subtask.transformer, header=subtask.header,
+                get_config=subtask.get_config, put_config=subtask.put_config, mode=subtask.mode
+            )
+
+        # list or tuple
         if isinstance(subtask, (list, tuple)):
-            subtask, callback = subtask
+            subtask, transformer = subtask
         else:
-            callback = None
+            transformer = None
+
+        # string
         if '.' not in subtask:
-            return cls._create_table_task(stores, sources, dest, subtask, callback)
+            return cls._create_table_task(stores, sources, dest, subtask, transformer)
         elif '.*' in subtask:
             store_name, _ = subtask.split('.*')
             source_store = stores.find_by_store_name(store_name)
@@ -68,37 +91,52 @@ class TaskFactory(object):
             raise NotImplementedError
 
     @classmethod
-    def _create_table_task(cls, stores, sources, dest, subtask, callback=None):
+    def _create_table_task(cls, stores, sources, dest, table_name, transformer=None, header=None,
+                           get_config=None, put_config=None, mode=None):
+
+        # find source store
         source_store = stores.find_by_table_name(
-            subtask, store_name_limits=[source['name'] for source in sources])
+            table_name, store_name_limits=[source['name'] for source in sources])
         if not source_store:
             raise ValueError
 
+        # get `get_config`
+        if get_config is None:
+            get_config = {}
         for source in sources:
             if source_store.name == source['name']:
                 source = source.copy()
                 source.pop('name')
-                get_config = source
+                get_config = get_config.update(source)
                 break
         else:
-            raise ValueError('Unknown table name {}'.format(subtask))
+            raise ValueError('Unknown table name {}'.format(table_name))
 
+        # find dest_store
         dest = dest.copy()
         dest_store = stores.find_by_store_name(dest.pop('name'))
-        put_config = dest
 
+        # get `put_config`
+        if put_config is None:
+            put_config = {}
+        put_config = put_config.update(dest)
+
+        # create task
         if isinstance(source_store, RDB) and isinstance(dest_store, RDB):
             get_config = RDBGetConfig(get_config)
             put_config = RDBPutConfig(put_config)
-            return RDBToRDBTask(source_store, dest_store, subtask, get_config, put_config, callback)
+            return RDBToRDBTask(source_store, dest_store, table_name, get_config, put_config,
+                                transformer, header)
         elif isinstance(source_store, RDB) and isinstance(dest_store, CSV):
             get_config = RDBGetConfig(get_config)
             put_config = CSVPutConfig(put_config)
-            return RDBToCSVTask(source_store, dest_store, subtask, get_config, put_config, callback)
+            return RDBToCSVTask(source_store, dest_store, table_name, get_config, put_config,
+                                transformer, header)
         elif isinstance(source_store, CSV) and isinstance(dest_store, RDB):
             get_config = CSVGetConfig(get_config)
-            put_config = RDBLoadConfig(put_config)
-            return CSVToRDBTask(source_store, dest_store, subtask, get_config, put_config)
+            put_config = RDBPutConfig(put_config)
+            return CSVToRDBTask(source_store, dest_store, table_name, get_config, put_config,
+                                transformer, header)
         else:
             raise NotImplementedError
 
@@ -131,25 +169,26 @@ def transfer_log(func):
 
 
 class RDBToRDBTask(Task):
-    def __init__(self, source, dest, table, get_config, put_config, callback=None):
+    def __init__(self, source, dest, table, get_config, put_config, transformer=None, header=None):
         self.source = source
         self.dest = dest
         self.get_config = get_config
         self.put_config = put_config
         self.table = table
-        self._callback = callback
+        self.transformer = transformer
+        self.header = header
 
     @transfer_log
     def execute(self):
         data = self.source.get(self.table, **self.get_config)
         count = self.source.count(self.table)
         with tqdm(total=count, unit='rows') as bar:
-            if self._callback:
+            if self.transformer:
                 cursor = Cursor(data, fetch_callback=bar.update)
                 chunk_size = self.get_config.get('chunk_size')
                 dest = Dest(self.dest, self.table, chunk_size, put_config=self.put_config)
                 try:
-                    self._callback(cursor, dest)
+                    self.transformer(cursor, dest)
                 except NoResultFound:
                     pass
                 finally:
@@ -165,17 +204,31 @@ class RDBToCSVTask(RDBToRDBTask):
 
 
 class CSVToRDBTask(Task):
-    def __init__(self, source, dest, table, get_config, put_config):
+    def __init__(self, source, dest, table, get_config, put_config, transformer=None, header=None):
         self.source = source
         self.dest = dest
         self.get_config = get_config
         self.put_config = put_config
         self.table = table
+        self.transformer = transformer
+        self.header = header
 
     @transfer_log
     def execute(self):
-        path = self.source.get_path(self.table)
-        self.dest.load(self.table, path, **self.put_config)
+        data = self.source.get(self.table, **self.get_config)
+        if self.transformer:
+            cursor = Cursor(data)
+            chunk_size = self.get_config.get('chunk_size')
+            dest = Dest(self.dest, self.table, chunk_size, put_config=self.put_config)
+            try:
+                self.transformer(cursor, dest)
+            except NoResultFound:
+                pass
+            finally:
+                dest.commit()
+        else:
+            for i, data_ in enumerate(data):
+                self.dest.put(self.table, data_, **self.put_config)
 
 
 class SQLTask(Task):

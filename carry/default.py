@@ -22,19 +22,30 @@ class RDBLoadConfig(DefaultDict):
 
 
 class CSVGetConfig(DefaultDict):
-    pass
+    default = {
+        'encoding': 'utf-8',
+        'index_col': None,
+        'header': 0,
+        'chunksize': 10000,
+
+        'na_values': r'NULL',
+        'sep': ',',
+        'lineterminator': '\n',
+        'escapechar': None,
+        'quoting': csv.QUOTE_MINIMAL
+    }
 
 
 class CSVPutConfig(DefaultDict):
     default = {
         'encoding': 'utf-8',
         'index': False,
-        'header': False,
+        'header': True,
         'mode': 'a',
+        'chunksize': 10000,
 
         'na_rep': r'NULL',
         'sep': ',',
-        'line_terminator': '\r\n',
         'escapechar': '',
         'quoting': csv.QUOTE_MINIMAL
     }
