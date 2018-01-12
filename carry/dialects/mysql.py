@@ -25,4 +25,7 @@ WHERE RC.CONSTRAINT_SCHEMA = :schema
         return result
 
     def create_view(self, name, sql):
-        raise NotImplementedError
+        sql = u"""
+        CREATE OR REPLACE VIEW {name}
+        AS {sql}""".format(name=name, sql=sql)
+        self.engine.execute(text(sql))
