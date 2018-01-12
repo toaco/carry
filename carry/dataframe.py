@@ -30,6 +30,13 @@ class DFAdapter(object):
     def to_csv(self, *args, **kwargs):
         return self.df.to_csv(*args, **kwargs)
 
+    def filter_fields(self, header):
+        df_columns = set(self.df.columns.values)
+        self.df = self.df.drop(columns=df_columns - set(header))
+
+    def rename_fields(self, mapper):
+        self.df = self.df.rename(index=str, columns=mapper)
+
 
 class DFRowAdapter(object):
     """adapter for row in pandas DataFrame"""

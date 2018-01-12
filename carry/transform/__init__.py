@@ -3,10 +3,11 @@ class NoResultFound(Exception):
 
 
 class Cursor(object):
-    def __init__(self, data, fetch_callback=None):
+    def __init__(self, data, fetch_callback=None, header=None):
         self._data = data
         self._iterator = iter(self)
         self._fetch_callback = fetch_callback
+        self._header = header
 
     def fetch(self):
         """return the next row of table,if don't have next row,
@@ -17,9 +18,14 @@ class Cursor(object):
             raise NoResultFound
 
     def __iter__(self):
-        for chunk in self._data:
+        for data_ in self._data:
+            if isinstance(self._header, dict):
+                data_.filter_fields(self._header.keys())
+                data_.rename_fields(self._header)
+            elif isinstance(self._header, (tuple, list)):
+                data_.filter_fields(self._header)
             num = 0
-            for row in chunk:
+            for row in data_:
                 num += 1
                 yield row
             if self._fetch_callback:

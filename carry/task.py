@@ -184,7 +184,7 @@ class RDBToRDBTask(Task):
         count = self.source.count(self.table)
         with tqdm(total=count, unit='rows') as bar:
             if self.transformer:
-                cursor = Cursor(data, fetch_callback=bar.update)
+                cursor = Cursor(data, fetch_callback=bar.update, header=self.header)
                 chunk_size = self.get_config.get('chunk_size')
                 dest = Dest(self.dest, self.table, chunk_size, put_config=self.put_config)
                 try:
@@ -195,6 +195,11 @@ class RDBToRDBTask(Task):
                     dest.commit()
             else:
                 for i, data_ in enumerate(data):
+                    if isinstance(self.header, dict):
+                        data_.filter_fields(self.header.keys())
+                        data_.rename_fields(self.header)
+                    elif isinstance(self.header, (tuple, list)):
+                        data_.filter_fields(self.header)
                     self.dest.put(self.table, data_, **self.put_config)
                     bar.update(len(data_))
 
@@ -217,7 +222,7 @@ class CSVToRDBTask(Task):
     def execute(self):
         data = self.source.get(self.table, **self.get_config)
         if self.transformer:
-            cursor = Cursor(data)
+            cursor = Cursor(data, header=self.header)
             chunk_size = self.get_config.get('chunk_size')
             dest = Dest(self.dest, self.table, chunk_size, put_config=self.put_config)
             try:
@@ -228,6 +233,12 @@ class CSVToRDBTask(Task):
                 dest.commit()
         else:
             for i, data_ in enumerate(data):
+                if isinstance(self.header, dict):
+                    data_.filter_fields(self.header.keys())
+                    data_.rename_fields(self.header)
+                elif isinstance(self.header, (tuple, list)):
+                    data_.filter_fields(self.header)
+
                 self.dest.put(self.table, data_, **self.put_config)
 
 
