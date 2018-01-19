@@ -1,3 +1,6 @@
 tqdm
 pandas
 sqlalchemy
+
+# for test
+pytest
