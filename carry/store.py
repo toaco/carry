@@ -132,6 +132,7 @@ class RDB(Store):
         if not tables:
             inspector = sqlalchemy.inspect(self.engine)
             tables = inspector.get_table_names()
+            self.materialized_tables = tables[:]
             # treat .sql file as a table
             tables.extend(self.name_and_sql_paths.keys())
         super(RDB, self).__init__(name, tables)
@@ -166,9 +167,12 @@ class RDB(Store):
         sql = self._get_sql(name)
         if sql is None:
             sql = u"select * from {}".format(name)
+        elif sql.strip() == '':
+            raise ValueError('{}.sql is empty!'.format(name))
         else:
             if self.create_view:
-                self.sql_helper.create_view(self.view_prefix + '_' + name, sql)
+                view_name = self.view_prefix + '_' + name if self.view_prefix else name
+                self.sql_helper.create_view(view_name, sql)
         data = self._read_sql(sql, **config)
         if config.get('chunk_size'):
             return DFIteratorAdapter(data)
@@ -212,14 +216,10 @@ class RDB(Store):
         return self.engine.execute(sqlalchemy.text(sql))
 
     def truncate(self, names):
+        names = list(filter(lambda name: name in self.materialized_tables, names))
         if names:
             logger.info('Truncate table in {}: {}'.format(self.name, ', '.join(names)))
-            sql = """
-            SET FOREIGN_KEY_CHECKS = 0;
-            {}
-            SET FOREIGN_KEY_CHECKS = 1;
-            """.format('\n'.join('TRUNCATE {};'.format(name) for name in names))
-            self._execute_sql(sql)
+            self.sql_helper.truncate(names)
 
     @convert_table_name
     def load(self, name, path, **config):

@@ -29,3 +29,11 @@ WHERE RC.CONSTRAINT_SCHEMA = :schema
         CREATE OR REPLACE VIEW {name}
         AS {sql}""".format(name=name, sql=sql)
         self.engine.execute(text(sql))
+
+    def truncate(self, names):
+        sql = """
+        SET FOREIGN_KEY_CHECKS = 0;
+        {}
+        SET FOREIGN_KEY_CHECKS = 1;
+        """.format('\n'.join('TRUNCATE {};'.format(name) for name in names))
+        self.engine.execute(text(sql))

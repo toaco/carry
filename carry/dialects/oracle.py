@@ -12,3 +12,6 @@ class OracleHelper(GenericSqlHelper):
 CREATE OR REPLACE VIEW {name}
 AS {sql} WITH READ ONLY""".format(name=name, sql=sql)
         self.engine.execute(text(sql))
+
+    def truncate(self, names):
+        raise NotImplementedError

@@ -4,6 +4,9 @@ from carry.dialects.base import GenericSqlHelper
 
 
 class MSSqlHelper(GenericSqlHelper):
+    def truncate(self, names):
+        pass
+
     def relations(self, schema):
         raise NotImplementedError
 

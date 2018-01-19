@@ -14,6 +14,9 @@ class SqlHelper(object):
     def create_view(self, name, sql):
         raise NotImplementedError
 
+    def truncate(self, names):
+        raise NotImplementedError
+
 
 class GenericSqlHelper(SqlHelper):
     """
@@ -41,4 +44,7 @@ class GenericSqlHelper(SqlHelper):
         return result
 
     def create_view(self, name, sql):
+        raise NotImplementedError
+
+    def truncate(self, names):
         raise NotImplementedError
