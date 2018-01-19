@@ -13,9 +13,11 @@ __version__ = '0.1'
 def run(config, task_ids=None):
     if isinstance(config, str):
         config = imp.load_source('carry.config', config)
-
-    etl = Carry(config.STORES)
-    etl.execute(config.TASKS, task_ids)
+        etl = Carry(config.STORES)
+        etl.execute(config.TASKS, task_ids)
+    elif isinstance(config, dict):
+        etl = Carry(config['STORES'])
+        etl.execute(config['TASKS'], task_ids)
 
 
 class Carry(object):
