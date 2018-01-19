@@ -17,6 +17,9 @@ class SqlHelper(object):
     def truncate(self, names):
         raise NotImplementedError
 
+    def drop_view(self, name):
+        raise NotImplementedError
+
 
 class GenericSqlHelper(SqlHelper):
     """
@@ -48,3 +51,6 @@ class GenericSqlHelper(SqlHelper):
 
     def truncate(self, names):
         raise NotImplementedError
+
+    def drop_view(self, name):
+        self.engine.execute('DROP VIEW {}'.format(name))

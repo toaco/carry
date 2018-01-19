@@ -37,6 +37,10 @@ class StoreCollection(object):
             if name in store and store.name in store_name_limits:
                 return store
 
+    def drop_created_views(self):
+        for store in self.stores:
+            store.drop_created_views()
+
 
 def convert_table_name(func):
     def _wrapper(self, name, *args, **kw):
@@ -112,6 +116,9 @@ class Store(object):
     def truncate(self, names):
         raise NotImplementedError
 
+    def drop_created_views(self):
+        raise NotImplementedError
+
 
 def rename_chunk_size(config):
     if 'chunk_size' in config:
@@ -128,6 +135,7 @@ class RDB(Store):
         self.view_prefix = view_prefix
         self.name_and_sql_paths = self._find_name_and_sql_paths(name)
         self.sql_helper = SqlHelperFactory.create(self.engine)
+        self.created_views = []
 
         if not tables:
             inspector = sqlalchemy.inspect(self.engine)
@@ -173,6 +181,7 @@ class RDB(Store):
             if self.create_view:
                 view_name = self.view_prefix + '_' + name if self.view_prefix else name
                 self.sql_helper.create_view(view_name, sql)
+                self.created_views.append(view_name)
         data = self._read_sql(sql, **config)
         if config.get('chunk_size'):
             return DFIteratorAdapter(data)
@@ -220,6 +229,10 @@ class RDB(Store):
         if names:
             logger.info('Truncate table in {}: {}'.format(self.name, ', '.join(names)))
             self.sql_helper.truncate(names)
+
+    def drop_created_views(self):
+        for name in self.created_views:
+            self.sql_helper.drop_view(name)
 
     @convert_table_name
     def load(self, name, path, **config):
@@ -297,3 +310,6 @@ class CSV(Store):
         config = rename_chunk_size(config)
         path = self.get_path(name)
         return pandas.read_csv(path, **config)
+
+    def drop_created_views(self):
+        pass

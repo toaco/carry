@@ -42,13 +42,15 @@ class TaskClassifier(object):
                     raise NotImplementedError
             elif isinstance(task, TableTaskConfig):
                 tables.append(task.name)
-            else:
+            elif isinstance(task, (str, unicode)):
                 if '.' not in task:
                     tables.append(task)
                 elif '.sql' in task:
                     tables.append(task.split('.sql')[0])
                 else:
                     raise NotImplementedError
+            elif callable(task):
+                pass
         return tables
 
 
@@ -67,6 +69,9 @@ class TaskFactory(object):
             subtask, transformer = subtask
         else:
             transformer = None
+
+        if callable(subtask):
+            return PythonTask(subtask)
 
         # string
         if '.' not in subtask:

@@ -39,6 +39,8 @@ class Carry(object):
             self._execute_task(sources, dest, orders)
             logger.info('Finish task {}'.format(i))
 
+        self.stores.drop_created_views()
+
     def _execute_task(self, sources, dest, orders):
         # truncate
         tc = TaskClassifier(orders)
