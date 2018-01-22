@@ -1,3 +1,6 @@
+import time
+
+
 class NoResultFound(Exception):
     pass
 
@@ -33,12 +36,11 @@ class Cursor(object):
 
 
 class Dest(object):
-    def __init__(self, dest_store, table, chunk_size, put_config):
-        self._dest_store = dest_store
-        self._table = table
+    def __init__(self, chunk_size, shared):
         self._chunk_size = chunk_size
-        self._put_config = put_config
         self._data = []
+
+        self.shared = shared
 
     def insert(self, row):
         if not row:
@@ -48,9 +50,22 @@ class Dest(object):
             self.commit()
 
     def commit(self):
+        shared = self.shared
+        queue = shared['queue']
+        condition = shared['condition']
+        max_queue_size = shared['max_queue_size']
         if self._data:
             data = type(self._data[0]).concat(self._data)
-            self._dest_store.put(self._table, data, **self._put_config)
+
+            condition.acquire()
+            if len(queue) == max_queue_size:
+                condition.wait()
+            queue.append(data)
+
+            condition.notify()
+            condition.release()
+            time.sleep(0.01)
+
             self._data = []
 
 
@@ -63,7 +78,7 @@ if __name__ == '__main__':
     assert cursor.fetch() == 5
     try:
         cursor.fetch()
-    except LookupError:
+    except NoResultFound:
         pass
     else:
         assert False

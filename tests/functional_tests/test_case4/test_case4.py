@@ -49,7 +49,7 @@ def test():
                 },
                 'orders': [
                     'users_view',
-                    Assert
+                    carry.py(Assert, dependency=['users_view'])
                 ],
             }
         ]

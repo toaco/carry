@@ -19,8 +19,9 @@ def chdir(path):
 
 
 @contextlib.contextmanager
-def mkdir(path):
+def mkdir(path, keep_dir=False):
     if not os.path.exists(path):
         os.mkdir(path)
     yield
-    shutil.rmtree(path)
+    if not keep_dir:
+        shutil.rmtree(path)

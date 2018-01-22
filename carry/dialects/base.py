@@ -20,6 +20,9 @@ class SqlHelper(object):
     def drop_view(self, name):
         raise NotImplementedError
 
+    def dependency(self, name):
+        raise NotImplementedError
+
 
 class GenericSqlHelper(SqlHelper):
     """
@@ -54,3 +57,9 @@ class GenericSqlHelper(SqlHelper):
 
     def drop_view(self, name):
         self.engine.execute('DROP VIEW {}'.format(name))
+
+    def dependency(self, name):
+        result = []
+        for item in self.inspector.get_foreign_keys(name):
+            result.append(item['referred_table'])
+        return result

@@ -1,10 +1,9 @@
 from collections import defaultdict
 
-GRAY, BLACK = 0, 1
-
 
 def topological(graph):
     order, enter, state = [], set(graph), {}
+    GRAY, BLACK = 0, 1
 
     def dfs(node):
         state[node] = GRAY
@@ -71,3 +70,36 @@ class DefaultDict(object):
         extended = default.copy()
         extended.update(dict_)
         return extended
+
+
+def topological_find(graph, auto_delete=False):
+    result, enter, state = set(), set(graph), {}
+    GRAY, BLACK = 0, 1
+
+    def dfs(node):
+        state[node] = GRAY
+        dependency = graph.get(node, ())
+        if not dependency:
+            result.add(node)
+        else:
+            for k in dependency:
+                sk = state.get(k, None)
+                if sk == GRAY:
+                    raise ValueError("cycle")
+                if sk == BLACK:
+                    continue
+                enter.discard(k)
+                dfs(k)
+        state[node] = BLACK
+
+    while enter: dfs(enter.pop())
+
+    if auto_delete:
+        for r in result:
+            if r in graph:
+                del graph[r]
+            for gv in graph.values():
+                if gv and r in gv:
+                    gv.remove(r)
+
+    return result

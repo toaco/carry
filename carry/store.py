@@ -130,7 +130,11 @@ def rename_chunk_size(config):
 class RDB(Store):
     def __init__(self, name, url, create_view=False, view_prefix='', tables=None, echo=False):
         self.url = url
-        self.engine = sqlalchemy.create_engine(url, echo=echo)
+        if url.split(':', 1)[0] == 'mysql':
+            self.engine = sqlalchemy.create_engine(url, echo=echo, server_side_cursors=True)
+        else:
+            self.engine = sqlalchemy.create_engine(url, echo=echo)
+
         self.create_view = create_view
         self.view_prefix = view_prefix
         self.name_and_sql_paths = self._find_name_and_sql_paths(name)
@@ -144,6 +148,7 @@ class RDB(Store):
             # treat .sql file as a table
             tables.extend(self.name_and_sql_paths.keys())
         super(RDB, self).__init__(name, tables)
+        self._dependency = {}
 
     @property
     def ordered_tables(self):
@@ -244,6 +249,10 @@ class RDB(Store):
         LINES TERMINATED BY '\r\n';
         """
         self._execute_sql(sql.format(path=path, name=name))
+
+    @convert_table_name
+    def dependency(self, name):
+        return self.sql_helper.dependency(name)
 
 
 class CSV(Store):

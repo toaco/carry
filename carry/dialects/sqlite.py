@@ -15,6 +15,6 @@ class SqliteHelper(GenericSqlHelper):
         self.engine.execute(text(sql))
 
     def truncate(self, names):
-        sql = ('\n'.join('DELETE FROM {};'.format(name) for name in names))
-        print sql
-        self.engine.execute(text(sql))
+        sqls = ('DELETE FROM {}'.format(name) for name in names)
+        for sql in sqls:
+            self.engine.execute(text(sql))
