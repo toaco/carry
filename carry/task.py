@@ -51,6 +51,9 @@ class TaskClassifier(object):
                     tables.append(task_config)
                 elif '.sql' in task_config:
                     tables.append(task_config.split('.sql')[0])
+                # TODO
+                elif '.*' in task_config:
+                    pass
                 else:
                     raise NotImplementedError
             elif isinstance(task_config, TableTaskConfig):
@@ -246,7 +249,13 @@ class RDBToRDBTask(Task):
         }
         self.task_done = False
 
+        self._consumers_num = None
+        self._finished_consumers_num = 0
+        self._finished_lock = Lock()
+
     def execute(self, pool=None, watcher=None, consumers_num=3):
+        self._consumers_num = consumers_num
+
         def logger(func_name, thread_id):
             def _logger(msg):
                 # print '\n{}-{}-{}: {}\n'.format(self.table, func_name, thread_id, msg),
@@ -268,7 +277,7 @@ class RDBToRDBTask(Task):
             count = self.source.count(self.table)
             with self.progress_bar_lock:
                 bar = tqdm(total=count, unit='rows', position=Task.bar_id,
-                           desc='Transfer table {name}'.format(name=self.table) + str(Task.bar_id))
+                           desc='Transfer table {name}'.format(name=self.table))
                 Task.bar_id += 1
         else:
             bar = MockProgressbar()
@@ -377,9 +386,16 @@ class RDBToRDBTask(Task):
                 try:
                     self.dest.put(self.table, data, **self.put_config)
                     break
-                except Exception:
+                except Exception as e:
+                    logger(e)
                     continue
-        watcher(self.name)
+        self._finished(watcher)
+
+    def _finished(self, watcher):
+        with self._finished_lock:
+            self._finished_consumers_num += 1
+        if self._finished_consumers_num == self._consumers_num:
+            watcher(self.name)
 
 
 class RDBToCSVTask(RDBToRDBTask):
