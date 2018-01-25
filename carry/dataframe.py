@@ -40,9 +40,13 @@ class DFAdapter(object):
 
 class DFRowAdapter(object):
     """adapter for row in pandas DataFrame"""
+    case_sensitive = False
 
     def __init__(self, row):
         self.__dict__['_row'] = row
+        self.__dict__['_case_insensitive_names'] = {}
+        for field in row.index.values.tolist():
+            self.__dict__['_case_insensitive_names'][field.lower()] = field
 
     @classmethod
     def concat(cls, rows):
@@ -52,9 +56,13 @@ class DFRowAdapter(object):
     def __getitem__(self, key):
         if key == '_row':
             return self.__dict__['_row']
+        if not self.case_sensitive:
+            key = self.__dict__['_case_insensitive_names'][key.lower()]
         return self.__dict__['_row'][key]
 
     def __setitem__(self, key, value):
+        if not self.case_sensitive:
+            key = self.__dict__['_case_insensitive_names'][key.lower()]
         self.__dict__['_row'][key] = value
 
     def __setattr__(self, key, value):
