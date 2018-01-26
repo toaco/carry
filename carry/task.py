@@ -184,7 +184,7 @@ class TaskFactory(object):
             if source_store.name == source['name']:
                 source = source.copy()
                 source.pop('name')
-                get_config = get_config.update(source)
+                get_config.update(source)
                 break
         else:
             raise ValueError('Unknown table name {}'.format(table_name))
@@ -196,7 +196,7 @@ class TaskFactory(object):
         # get `put_config`
         if put_config is None:
             put_config = {}
-        put_config = put_config.update(dest)
+        put_config.update(dest)
 
         # create task_config
         if isinstance(source_store, RDB) and isinstance(dest_store, RDB):

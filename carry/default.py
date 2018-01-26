@@ -5,7 +5,8 @@ from carry.utils import DefaultDict
 
 class RDBGetConfig(DefaultDict):
     default = {
-        'chunk_size': 10000
+        'chunk_size': 10000,
+        'coerce_float': False,
     }
 
 
