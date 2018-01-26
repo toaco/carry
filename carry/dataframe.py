@@ -65,11 +65,19 @@ class DFRowAdapter(object):
             key = self.__dict__['_case_insensitive_names'][key.lower()]
         self.__dict__['_row'][key] = value
 
+    def __delitem__(self, key):
+        if not self.case_sensitive:
+            key = self.__dict__['_case_insensitive_names'][key.lower()]
+        self.__dict__['_row'] = self.__dict__['_row'].drop([key])
+
     def __setattr__(self, key, value):
         self[key] = value
 
     def __getattr__(self, key):
         return self[key]
+
+    def __delattr__(self, key):
+        del self[key]
 
     def copy(self):
         return DFRowAdapter(self.__dict__['_row'].copy(deep=True))
