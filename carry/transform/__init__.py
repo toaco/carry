@@ -42,12 +42,13 @@ class Dest(object):
 
         self.shared = shared
 
-    def insert(self, row):
+    def insert(self, *row):
         if not row:
             raise ValueError
-        self._data.append(row)
-        if len(self._data) == self._chunk_size:
-            self.commit()
+        for r in row:
+            self._data.append(r)
+            if len(self._data) == self._chunk_size:
+                self.commit()
 
     def commit(self):
         shared = self.shared
