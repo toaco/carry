@@ -1,6 +1,6 @@
 import os
 from Queue import Queue
-from threading import Thread, Lock
+from threading import Thread, RLock
 
 from carry.logger import logger
 from carry.task import TaskFactory
@@ -49,7 +49,7 @@ class TaskDispatcher(object):
         self.consumers_num = task_config.pop('consumers', 3)
         threads = task_config.pop('threads', et_num) * (self.consumers_num + 1)
         self._threads_pool = ThreadPoolManger(threads)
-        self._lock = Lock()
+        self._lock = RLock()
 
     def dispatch(self):
         logger.info('Start transfer(PID: {})'.format(os.getpid()))

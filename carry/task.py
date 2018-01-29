@@ -48,6 +48,9 @@ class TaskClassifier(object):
         for task_config in self.tasks:
             if isinstance(task_config, (TableTaskConfig, SQLTaskConfig)):
                 tables.append(task_config.name)
+                if task_config.effects is not None:
+                    tables.extend(task_config.effects)
+
             elif isinstance(task_config, (list, tuple)):
                 task_config, _ = task_config
                 tables.append(task_config)
@@ -63,7 +66,10 @@ class TaskClassifier(object):
                     raise NotImplementedError
             elif isinstance(task_config, TableTaskConfig):
                 tables.append(task_config.name)
-            elif isinstance(task_config, PythonTaskConfig) or callable(task_config):
+            elif isinstance(task_config, PythonTaskConfig):
+                if task_config.effects is not None:
+                    tables.extend(task_config.effects)
+            elif callable(task_config):
                 pass
             else:
                 raise NotImplementedError
