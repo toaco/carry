@@ -1,6 +1,7 @@
 import time
 from threading import Condition, Lock
 
+from sqlalchemy.exc import NoSuchTableError
 from tqdm import tqdm
 
 from carry.bar import MockProgressbar
@@ -12,7 +13,7 @@ from carry.transform import Dest, Cursor, NoResultFound
 
 class TableTaskConfig(object):
     def __init__(self, name, transformer=None, header=None, get_config=None, put_config=None,
-                 mode=None, dependency=None):
+                 mode=None, dependency=None, source_name=None):
         self.name = name
         self.transformer = transformer
         self.header = header
@@ -20,6 +21,7 @@ class TableTaskConfig(object):
         self.put_config = put_config
         self.mode = mode
         self.dependency = dependency
+        self.source_name = source_name or name
 
 
 class SQLTaskConfig(object):
@@ -87,6 +89,8 @@ class TaskFactory(object):
                 self.tasks[subtask.name] = subtask
                 self.task_dependency[subtask.name] = subtask.dependency
 
+        source_tables = dict((task.source_table_name, task.name) for task in self.tasks.values()
+                             if isinstance(task, RDBToCSVTask))
         for name, dependency in self.task_dependency.items():
             if dependency:
                 continue
@@ -94,19 +98,21 @@ class TaskFactory(object):
             task = self.tasks[name]
             if isinstance(task, RDBToCSVTask):
                 try:
-                    source_table_dependency = task.source.dependency(name)
+                    source_table_dependency = task.source.dependency(task.source_table_name)
                 except ValueError:
                     # table not in the source database
                     continue
                 else:
                     for d in source_table_dependency:
-                        if d in self.tasks:
-                            dependency.append(d)
+                        if d in source_tables:
+                            dependency.append(source_tables[d])
             elif isinstance(task, (RDBToRDBTask, CSVToRDBTask)):
                 try:
                     target_table_dependency = task.dest.dependency(name)
                 except ValueError:
                     # table not in the dest database
+                    continue
+                except NoSuchTableError:
                     continue
                 else:
                     for d in target_table_dependency:
@@ -123,7 +129,7 @@ class TaskFactory(object):
             return cls._create_table_task(
                 stores, sources, dest, subtask_config.name, subtask_config.transformer, header=subtask_config.header,
                 get_config=subtask_config.get_config, put_config=subtask_config.put_config, mode=subtask_config.mode,
-                dependency=subtask_config.dependency
+                dependency=subtask_config.dependency, source_name=subtask_config.source_name
             )
 
         # table task: list or tuple
@@ -134,7 +140,8 @@ class TaskFactory(object):
 
         # sql task
         if isinstance(subtask_config, SQLTaskConfig):
-            return SQLTask(dest, subtask_config.name, subtask_config.dependency)
+            dest_store = stores.find_by_store_name(dest['name'])
+            return SQLTask(dest_store, subtask_config.name, subtask_config.dependency)
 
         # python task
         if callable(subtask_config):
@@ -169,11 +176,13 @@ class TaskFactory(object):
 
     @classmethod
     def _create_table_task(cls, stores, sources, dest, table_name, transformer=None, header=None,
-                           get_config=None, put_config=None, mode=None, dependency=None):
+                           get_config=None, put_config=None, mode=None, dependency=None, source_name=None):
+
+        source_name = source_name or table_name
 
         # find source store
         source_store = stores.find_by_table_name(
-            table_name, store_name_limits=[source['name'] for source in sources])
+            source_name, store_name_limits=[source['name'] for source in sources])
         if not source_store:
             raise ValueError
 
@@ -187,7 +196,7 @@ class TaskFactory(object):
                 get_config.update(source)
                 break
         else:
-            raise ValueError('Unknown table name {}'.format(table_name))
+            raise ValueError('Unknown table name {}'.format(source_name))
 
         # find dest_store
         dest = dest.copy()
@@ -203,17 +212,17 @@ class TaskFactory(object):
             get_config = RDBGetConfig(get_config)
             put_config = RDBPutConfig(put_config)
             return RDBToRDBTask(source_store, dest_store, table_name, get_config, put_config,
-                                transformer, header, dependency)
+                                transformer, header, dependency, source_name)
         elif isinstance(source_store, RDB) and isinstance(dest_store, CSV):
             get_config = RDBGetConfig(get_config)
             put_config = CSVPutConfig(put_config)
             return RDBToCSVTask(source_store, dest_store, table_name, get_config, put_config,
-                                transformer, header, dependency)
+                                transformer, header, dependency, source_name)
         elif isinstance(source_store, CSV) and isinstance(dest_store, RDB):
             get_config = CSVGetConfig(get_config)
             put_config = RDBPutConfig(put_config)
             return CSVToRDBTask(source_store, dest_store, table_name, get_config, put_config,
-                                transformer, header, dependency)
+                                transformer, header, dependency, source_name)
         else:
             raise NotImplementedError
 
@@ -231,13 +240,15 @@ class Task(object):
 
 
 class RDBToRDBTask(Task):
-    def __init__(self, source, dest, table, get_config, put_config, transformer=None, header=None, dependency=None):
+    def __init__(self, source, dest, table, get_config, put_config, transformer=None, header=None, dependency=None,
+                 source_table_name=None):
         super(RDBToRDBTask, self).__init__(table, dependency)
         self.source = source
         self.dest = dest
         self.get_config = get_config
         self.put_config = put_config
         self.table = table
+        self.source_table_name = source_table_name
         self.transformer = transformer
         self.header = header
 
@@ -258,7 +269,7 @@ class RDBToRDBTask(Task):
 
         def logger(func_name, thread_id):
             def _logger(msg):
-                # print '\n{}-{}-{}: {}\n'.format(self.table, func_name, thread_id, msg),
+                print '\n{}-{}-{}: {}\n'.format(self.table, func_name, thread_id, msg),
                 pass
 
             return _logger
@@ -269,12 +280,12 @@ class RDBToRDBTask(Task):
 
     def _get_data(self, display_bar=True, logger=None):
         try:
-            data = self.source.get(self.table, **self.get_config)
+            data = self.source.get(self.source_table_name, **self.get_config)
         except Exception:
-            print('Error occurred when get data from {}!'.format(self.table))
+            print('Error occurred when get data from {}!'.format(self.source_table_name))
             raise
         if display_bar:
-            count = self.source.count(self.table)
+            count = self.source.count(self.source_table_name)
             with self.progress_bar_lock:
                 bar = tqdm(total=count, unit='rows', position=Task.bar_id,
                            desc='Transfer table {name}'.format(name=self.table))
@@ -413,7 +424,7 @@ class SQLTask(Task):
         self.store = store
 
     def execute(self, pool=None, watcher=None, consumers_num=3):
-        logger.info('Execute SQL script in {store}: {name}.sql'.format(
+        logger.info('Execute SQL script in {store}: {name}'.format(
             store=self.store.name, name=self.name)
         )
         self.store.execute(self.name)

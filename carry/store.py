@@ -204,6 +204,9 @@ class RDB(Store):
         self._update_case_insensitive_names()
 
     def _get_sql(self, name):
+        if name.endswith('.sql'):
+            name = name[:-4]
+
         if name in self.name_and_sql_paths:
             with open(self.name_and_sql_paths[name], 'rb') as fo:
                 return fo.read().decode('utf-8')
@@ -218,7 +221,6 @@ class RDB(Store):
         config = rename_chunk_size(config)
         data.to_sql(name=name, con=self.engine, **config)
 
-    @convert_table_name
     def execute(self, name):
         sql = self._get_sql(name)
         if sql:
