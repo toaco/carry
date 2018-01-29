@@ -42,4 +42,8 @@ setup(
     install_requires=['tqdm', 'pandas', 'sqlalchemy'],
 
     python_requires='==2.7.*',
+
+    entry_points={
+        'console_scripts': ['carry=carry.command:main'],
+    }
 )

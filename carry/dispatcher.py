@@ -57,9 +57,14 @@ class TaskDispatcher(object):
         self._threads_pool.work_queue.join()
 
         # prevent progress bars
+        printed = False
         for task in self._tasks.values():
             if type(task) in (RDBToRDBTask, RDBToCSVTask):
-                print ''
+                printed = True
+                print
+        else:
+            if printed:
+                print
 
     def _publish(self):
         tasks = self._executable_tasks() - set(self._published_tasks)

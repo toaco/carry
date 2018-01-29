@@ -14,7 +14,7 @@ __version__ = '0.1'
 
 
 def run(config, task_ids=None):
-    if isinstance(config, str):
+    if isinstance(config, (str, unicode)):
         config = imp.load_source('carry.config', config)
         etl = Carry(config.STORES)
         etl.execute(config.TASKS, task_ids)
