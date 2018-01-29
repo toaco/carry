@@ -28,6 +28,8 @@ class CSVGetConfig(DefaultDict):
         'index_col': None,
         'header': 0,
         'chunksize': 10000,
+        'dtype': str,
+        'float_precision': 'round_trip',
 
         'na_values': r'NULL',
         'sep': ',',
