@@ -13,7 +13,7 @@ from carry.transform import Dest, Cursor, NoResultFound
 
 class TableTaskConfig(object):
     def __init__(self, name, transformer=None, header=None, get_config=None, put_config=None,
-                 mode=None, dependency=None, source_name=None):
+                 mode=None, dependency=None, source_name=None, effects=None):
         self.name = name
         self.transformer = transformer
         self.header = header
@@ -22,18 +22,21 @@ class TableTaskConfig(object):
         self.mode = mode
         self.dependency = dependency
         self.source_name = source_name or name
+        self.effects = effects
 
 
 class SQLTaskConfig(object):
-    def __init__(self, name, dependency=None):
+    def __init__(self, name, dependency=None, effects=None):
         self.name = name
         self.dependency = dependency
+        self.effects = effects
 
 
 class PythonTaskConfig(object):
-    def __init__(self, callable_, dependency=None):
+    def __init__(self, callable_, dependency=None, effects=None):
         self.callable_ = callable_
         self.dependency = dependency
+        self.effects = effects
 
 
 class TaskClassifier(object):
@@ -269,7 +272,7 @@ class RDBToRDBTask(Task):
 
         def logger(func_name, thread_id):
             def _logger(msg):
-                print '\n{}-{}-{}: {}\n'.format(self.table, func_name, thread_id, msg),
+                # print '\n{}-{}-{}: {}\n'.format(self.table, func_name, thread_id, msg),
                 pass
 
             return _logger
@@ -394,12 +397,17 @@ class RDBToRDBTask(Task):
             time.sleep(0.001)
 
             while 1:
+                error_count = 0
                 try:
                     self.dest.put(self.table, data, **self.put_config)
                     break
                 except Exception as e:
-                    logger(e)
-                    continue
+                    if error_count == 10:
+                        raise
+                    else:
+                        error_count += 1
+                        logger(e)
+                        continue
         self._finished(watcher)
 
     def _finished(self, watcher):

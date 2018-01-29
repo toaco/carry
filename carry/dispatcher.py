@@ -62,8 +62,11 @@ class TaskDispatcher(object):
         self._published_tasks = self._published_tasks.union(tasks)
         for task in tasks:
             task = self._tasks.get(task)
-            task.execute(pool=self._threads_pool, watcher=self.notify,
-                         consumers_num=self.consumers_num)
+            try:
+                task.execute(pool=self._threads_pool, watcher=self.notify,
+                             consumers_num=self.consumers_num)
+            except Exception as e:
+                logger.exception(e)
 
     def notify(self, task_id):
         with self._lock:
