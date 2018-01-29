@@ -3,7 +3,7 @@ from Queue import Queue
 from threading import Thread, RLock
 
 from carry.logger import logger
-from carry.task import TaskFactory
+from carry.task import TaskFactory, RDBToRDBTask, RDBToCSVTask
 from carry.utils import topological_find
 
 
@@ -55,7 +55,11 @@ class TaskDispatcher(object):
         logger.info('Start transfer(PID: {})'.format(os.getpid()))
         self._publish()
         self._threads_pool.work_queue.join()
-        print '\n' * (len(self._tasks) + 1)  # prevent progress bars
+
+        # prevent progress bars
+        for task in self._tasks.values():
+            if type(task) in (RDBToRDBTask, RDBToCSVTask):
+                print ''
 
     def _publish(self):
         tasks = self._executable_tasks() - set(self._published_tasks)

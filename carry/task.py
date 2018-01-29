@@ -300,7 +300,7 @@ class RDBToRDBTask(Task):
                            desc='Transfer table {name}'.format(name=self.table))
                 Task.bar_id += 1
         else:
-            bar = MockProgressbar()
+            bar = MockProgressbar(desc='Transfer table {name}'.format(name=self.table))
 
         if self.transformer:
             self._transform(bar, data)
@@ -402,14 +402,14 @@ class RDBToRDBTask(Task):
 
             time.sleep(0.001)
 
+            error_count = 0
             while 1:
-                error_count = 0
                 try:
                     self.dest.put(self.table, data, **self.put_config)
                     break
                 except Exception as e:
                     if error_count == 10:
-                        raise
+                        raise e
                     else:
                         error_count += 1
                         logger(e)
