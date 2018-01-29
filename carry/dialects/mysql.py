@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from sqlalchemy import text
 
 from carry.dialects.base import GenericSqlHelper
@@ -5,7 +7,7 @@ from carry.dialects.base import GenericSqlHelper
 
 class MySqlHelper(GenericSqlHelper):
     def relations(self, schema):
-        sql = u"""
+        sql = """
 SELECT
   KCU.TABLE_NAME,
   COLUMN_NAME,
@@ -25,7 +27,7 @@ WHERE RC.CONSTRAINT_SCHEMA = :schema
         return result
 
     def create_view(self, name, sql):
-        sql = u"""
+        sql = """
         CREATE OR REPLACE VIEW {name}
         AS {sql}""".format(name=name, sql=sql)
         self.engine.execute(text(sql))

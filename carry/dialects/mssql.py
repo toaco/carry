@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from sqlalchemy import text
 
 from carry.dialects.base import GenericSqlHelper

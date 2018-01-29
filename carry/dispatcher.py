@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import os
 from Queue import Queue
 from threading import Thread, RLock

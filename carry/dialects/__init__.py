@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from carry.dialects.base import GenericSqlHelper
 from carry.dialects.mssql import MSSqlHelper
 from carry.dialects.mysql import MySqlHelper

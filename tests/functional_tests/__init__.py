@@ -1,13 +1,23 @@
 import os
+import sys
 
 from tests import Databases
 
-databases_dir = os.path.join(os.path.dirname(__file__), 'res')
+
+def join_path(*path):
+    file_system_encoding = sys.getfilesystemencoding()
+    joined_path = os.path.join(*path)
+    if isinstance(joined_path, unicode):
+        return joined_path
+    return joined_path.decode(file_system_encoding)
+
+
+databases_dir = join_path(os.path.dirname(__file__), 'res')
 
 databases = Databases({
-    'db1': 'sqlite:///' + os.path.join(databases_dir, 'db1'),
-    'db2': 'sqlite:///' + os.path.join(databases_dir, 'db2'),
-    'db3': 'sqlite:///' + os.path.join(databases_dir, 'db3'),
+    'db1': 'sqlite:///' + join_path(databases_dir, 'db1'),
+    'db2': 'sqlite:///' + join_path(databases_dir, 'db2'),
+    'db3': 'sqlite:///' + join_path(databases_dir, 'db3'),
 })
 
 db1 = databases.db1

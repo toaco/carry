@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import os
 
 import pandas
@@ -130,7 +132,7 @@ def rename_chunk_size(config):
 class RDB(Store):
     def __init__(self, name, url, create_view=False, view_prefix='', tables=None, echo=False):
         self.url = url
-        if url.split(':', 1)[0] == 'mysql':
+        if url.startswith('mysql'):
             self.engine = sqlalchemy.create_engine(url, echo=echo, server_side_cursors=True)
         else:
             self.engine = sqlalchemy.create_engine(url, echo=echo)
@@ -171,15 +173,15 @@ class RDB(Store):
         # support counting `.sql` result
         if name in self.name_and_sql_paths:
             sql = self._get_sql(name)
-            return self.engine.scalar(sqlalchemy.text(u"select count(*) from ({}) T".format(sql)))
-        return self.engine.scalar(sqlalchemy.text(u"select count(*) from {}".format(name)))
+            return self.engine.scalar(sqlalchemy.text("select count(*) from ({}) T".format(sql)))
+        return self.engine.scalar(sqlalchemy.text("select count(*) from {}".format(name)))
 
     @convert_table_name
     def get(self, name, **config):
         """extract table from rdb"""
         sql = self._get_sql(name)
         if sql is None:
-            sql = u"select * from {}".format(name)
+            sql = "select * from {}".format(name)
         elif sql.strip() == '':
             raise ValueError('{}.sql is empty!'.format(name))
         else:
