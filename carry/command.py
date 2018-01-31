@@ -13,6 +13,6 @@ def main():
         config_path = 'carfile.py'
 
     if not os.path.exists(config_path):
-        print "Can't find the config file {}".format(config_path)
+        print("Can't find the config file {}".format(config_path))
     else:
         carry.run(config_path)

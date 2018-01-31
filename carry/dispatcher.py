@@ -1,8 +1,9 @@
 from __future__ import unicode_literals
 
 import os
-from Queue import Queue
 from threading import Thread, RLock
+
+from six.moves.queue import Queue
 
 from carry.logger import logger
 from carry.task import TaskFactory, RDBToRDBTask, RDBToCSVTask
@@ -63,10 +64,10 @@ class TaskDispatcher(object):
         for task in self._tasks.values():
             if type(task) in (RDBToRDBTask, RDBToCSVTask):
                 printed = True
-                print
+                print()
         else:
             if printed:
-                print
+                print()
 
     def _publish(self):
         tasks = self._executable_tasks() - set(self._published_tasks)

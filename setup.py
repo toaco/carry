@@ -32,6 +32,9 @@ setup(
 
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
     ],
     platforms='any',
 
@@ -41,7 +44,7 @@ setup(
 
     install_requires=['tqdm', 'pandas', 'sqlalchemy'],
 
-    python_requires='==2.7.*',
+    python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*',
 
     entry_points={
         'console_scripts': ['carry=carry.command:main'],

@@ -1,6 +1,7 @@
 tqdm
 pandas
 sqlalchemy
+six
 
 # for test
 pytest

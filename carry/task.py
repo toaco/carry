@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import time
 from threading import Condition, Lock
 
+import six
 from sqlalchemy.exc import NoSuchTableError
 from tqdm import tqdm
 
@@ -56,7 +57,7 @@ class TaskClassifier(object):
             elif isinstance(task_config, (list, tuple)):
                 task_config, _ = task_config
                 tables.append(task_config)
-            elif isinstance(task_config, (str, unicode)):
+            elif isinstance(task_config, six.string_types):
                 if '.' not in task_config:
                     tables.append(task_config)
                 elif '.sql' in task_config:
@@ -195,7 +196,7 @@ class TaskFactory(object):
         source_store = stores.find_by_table_name(
             source_name, store_name_limits=[source['name'] for source in sources])
         if not source_store:
-            raise ValueError
+            raise ValueError("Can't find table {}".format(source_name))
 
         # get `get_config`
         if get_config is None:
@@ -207,7 +208,7 @@ class TaskFactory(object):
                 get_config.update(source)
                 break
         else:
-            raise ValueError('Unknown table name {}'.format(source_name))
+            raise ValueError("Can't find table {}".format(source_name))
 
         # find dest_store
         dest = dest.copy()

@@ -2,6 +2,8 @@ from __future__ import unicode_literals
 
 import imp
 
+import six
+
 from carry.dispatcher import TaskDispatcher
 from carry.logger import logger
 from carry.store import StoreFactory
@@ -16,7 +18,7 @@ __version__ = '0.1'
 
 
 def run(config, task_ids=None):
-    if isinstance(config, (str, unicode)):
+    if isinstance(config, six.string_types):
         config = imp.load_source('carry.config', config)
         etl = Carry(config.STORES)
         etl.execute(config.TASKS, task_ids)
