@@ -4,6 +4,7 @@ import imp
 
 import six
 
+from carry import exc
 from carry.dispatcher import TaskDispatcher
 from carry.logger import logger
 from carry.store import StoreFactory
@@ -32,15 +33,19 @@ class Carry(object):
         self.stores = StoreFactory.create_all(store_configs)
 
     def execute(self, tasks, task_ids):
-        task_ids = set(task_ids or ())
-        for i, task in enumerate(tasks):
-            if task_ids and i not in task_ids:
-                continue
+        try:
+            task_ids = set(task_ids or ())
+            for i, task in enumerate(tasks):
+                if task_ids and i not in task_ids:
+                    continue
 
-            self._execute_task(i, task)
-            logger.info('Finish task  {}'.format(i))
+                self._execute_task(i, task)
+                logger.info('Finish task  {}'.format(i))
 
-        self.stores.drop_created_views()
+            self.stores.drop_created_views()
+        except Exception as e:
+            exc.exceptions.add(e)
+            raise
 
     def _execute_task(self, num, task):
         sources = task.get('from')

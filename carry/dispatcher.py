@@ -5,6 +5,7 @@ from threading import Thread, RLock
 
 from six.moves.queue import Queue
 
+from carry import exc
 from carry.logger import logger
 from carry.task import TaskFactory, RDBToRDBTask, RDBToCSVTask
 from carry.utils import topological_find
@@ -36,6 +37,8 @@ class ThreadManger(Thread):
             target, args = self.work_queue.get()
             try:
                 target(*args)
+            except Exception as e:
+                exc.exceptions.add(e)
             finally:
                 self.work_queue.task_done()
 

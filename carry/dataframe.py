@@ -2,6 +2,8 @@ from __future__ import unicode_literals
 
 import pandas
 
+from carry import exc
+
 
 class DFIteratorAdapter(object):
     def __init__(self, data):
@@ -32,11 +34,19 @@ class DFAdapter(object):
     def to_csv(self, *args, **kwargs):
         return self.df.to_csv(*args, **kwargs)
 
+    def _check_columns(self, columns):
+        df_columns = set(self.df.columns.values)
+        s = set(columns) - df_columns
+        if s:
+            raise exc.NoSuchColumnError(s)
+
     def filter_fields(self, header):
+        self._check_columns(header)
         df_columns = set(self.df.columns.values)
         self.df = self.df.drop(columns=df_columns - set(header))
 
     def rename_fields(self, mapper):
+        self._check_columns(mapper.keys())
         self.df = self.df.rename(index=str, columns=mapper)
 
 

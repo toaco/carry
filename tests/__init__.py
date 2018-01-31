@@ -9,6 +9,14 @@ users = Table(
     Column('reg_time', DateTime, nullable=False)
 )
 
+users2 = Table(
+    'users2', metadata,
+    Column('id', Integer, primary_key=True),
+    Column('name2', String),
+    Column('fullname2', String),
+    Column('reg_time2', DateTime, nullable=False)
+)
+
 addresses = Table(
     'addresses', metadata,
     Column('id', Integer, primary_key=True),

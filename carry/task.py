@@ -4,11 +4,13 @@ import time
 from threading import Condition, Lock
 
 import six
-from sqlalchemy.exc import NoSuchTableError
 from tqdm import tqdm
 
+from carry import exc
 from carry.bar import MockProgressbar
 from carry.default import RDBGetConfig, RDBPutConfig, CSVPutConfig, CSVGetConfig
+from carry.exc import NoSuchTableError
+from carry.exc import ProducerError, ConsumerError, CarryError
 from carry.logger import logger
 from carry.store import RDB, CSV
 from carry.transform import Dest, Cursor, NoResultFound
@@ -196,7 +198,7 @@ class TaskFactory(object):
         source_store = stores.find_by_table_name(
             source_name, store_name_limits=[source['name'] for source in sources])
         if not source_store:
-            raise ValueError("Can't find table {}".format(source_name))
+            raise exc.NoSuchTableError(source_name)
 
         # get `get_config`
         if get_config is None:
@@ -208,7 +210,7 @@ class TaskFactory(object):
                 get_config.update(source)
                 break
         else:
-            raise ValueError("Can't find table {}".format(source_name))
+            raise exc.NoSuchTableError(source_name)
 
         # find dest_store
         dest = dest.copy()
@@ -274,6 +276,7 @@ class RDBToRDBTask(Task):
 
         self._consumers_num = None
         self._finished_consumers_num = 0
+        self._consumer_died = False
         self._finished_lock = Lock()
 
     def execute(self, pool=None, watcher=None, consumers_num=3):
@@ -292,23 +295,34 @@ class RDBToRDBTask(Task):
 
     def _get_data(self, display_bar=True, logger=None):
         try:
-            data = self.source.get(self.source_table_name, **self.get_config)
-        except Exception:
-            print('Error occurred when get data from {}!'.format(self.source_table_name))
-            raise
-        if display_bar:
-            count = self.source.count(self.source_table_name)
-            with self.progress_bar_lock:
-                bar = tqdm(total=count, unit='rows', position=Task.bar_id,
-                           desc='Transfer table {name}'.format(name=self.table))
-                Task.bar_id += 1
-        else:
-            bar = MockProgressbar(desc='Transfer table {name}'.format(name=self.table))
+            try:
+                data = self.source.get(self.source_table_name, **self.get_config)
+            except Exception:
+                print('Error occurred when get data from {}!'.format(self.source_table_name))
+                raise
+            if display_bar:
+                count = self.source.count(self.source_table_name)
+                with self.progress_bar_lock:
+                    bar = tqdm(total=count, unit='rows', position=Task.bar_id,
+                               desc='Transfer table {name}'.format(name=self.table))
+                    Task.bar_id += 1
+            else:
+                bar = MockProgressbar(desc='Transfer table {name}'.format(name=self.table))
 
-        if self.transformer:
-            self._transform(bar, data)
-        else:
-            self._put_into_buffer_directly(bar, data, logger)
+            if self.transformer:
+                self._transform(bar, data)
+            else:
+                self._put_into_buffer_directly(bar, data, logger)
+        except Exception as e:
+            self.task_done = True
+            condition = self.shared['condition']
+            condition.acquire()
+            condition.notify()
+            condition.release()
+            if isinstance(e, CarryError):
+                raise e
+            else:
+                raise ProducerError(e)
 
     def _transform(self, bar, data):
         cursor = Cursor(data, fetch_callback=bar.update, header=self.header)
@@ -339,10 +353,16 @@ class RDBToRDBTask(Task):
             condition.acquire()
             logger('after acquire')
 
+            if self._consumer_died:
+                return
+
             if len(queue) == max_queue_size:
                 logger('reach the size limit')
                 condition.wait()
                 logger('reacquire the lock')
+
+                if self._consumer_died:
+                    return
 
             queue.append(d)
 
@@ -361,63 +381,74 @@ class RDBToRDBTask(Task):
             condition.release()
 
     def _put_data(self, watcher, logger):
-        queue = self.shared['queue']
-        condition = self.shared['condition']
+        try:
+            queue = self.shared['queue']
+            condition = self.shared['condition']
 
-        while 1:
-            logger('before acquire')
-            condition.acquire()
-            logger('after acquire')
-
-            flag = 0
             while 1:
-                if not queue:
-                    if self.task_done:
-                        logger('before notify and release')
-                        condition.notify()
-                        condition.release()
-                        logger('after notify and release')
-                        flag = 1
-                        break
-                    else:
-                        logger('queue is empty')
-                        condition.wait()
-                        logger('reacquire the lock')
+                logger('before acquire')
+                condition.acquire()
+                logger('after acquire')
 
-                        flag = 2
-                else:
+                if self._consumer_died:
+                    return
+
+                flag = 0
+                while 1:
+                    if not queue:
+                        if self.task_done:
+                            logger('before notify and release')
+                            condition.notify()
+                            condition.release()
+                            logger('after notify and release')
+                            flag = 1
+                            break
+                        else:
+                            logger('queue is empty')
+                            condition.wait()
+                            logger('reacquire the lock')
+
+                            if self._consumer_died:
+                                return
+
+                            flag = 2
+                    else:
+                        break
+                if flag == 1:
                     break
-            if flag == 1:
-                break
-            elif flag == 2 and self.task_done and not queue:
+                elif flag == 2 and self.task_done and not queue:
+                    logger('before notify and release')
+                    condition.notify()
+                    condition.release()
+                    logger('after notify and release')
+                    break
+
+                data = queue.pop(0)
+
                 logger('before notify and release')
                 condition.notify()
                 condition.release()
                 logger('after notify and release')
-                break
 
-            data = queue.pop(0)
+                time.sleep(0.001)
 
-            logger('before notify and release')
-            condition.notify()
-            condition.release()
-            logger('after notify and release')
-
-            time.sleep(0.001)
-
-            error_count = 0
-            while 1:
-                try:
-                    self.dest.put(self.table, data, **self.put_config)
-                    break
-                except Exception as e:
-                    if error_count == 10:
-                        raise e
-                    else:
-                        error_count += 1
-                        logger(e)
-                        continue
-        self._finished(watcher)
+                error_count = 0
+                while 1:
+                    try:
+                        self.dest.put(self.table, data, **self.put_config)
+                        break
+                    except Exception as e:
+                        if error_count == 10:
+                            raise e
+                        else:
+                            error_count += 1
+                            logger(e)
+                            continue
+        except Exception as e:
+            self._consumer_died = True
+            raise ConsumerError(e)
+        finally:
+            self._finished(watcher)
 
     def _finished(self, watcher):
         with self._finished_lock:

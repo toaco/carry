@@ -2,6 +2,7 @@ import os
 
 import pytest
 
+from carry import exc
 from tests import metadata
 from tests.functional_tests import db1, db2, db3
 from tests.utlis import mkdir
@@ -20,6 +21,7 @@ def drop12():
     yield
     metadata.drop_all(db1.engine)
     metadata.drop_all(db2.engine)
+    exc.exceptions.clear()
 
 
 @pytest.fixture
