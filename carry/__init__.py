@@ -15,7 +15,7 @@ table = TableTaskConfig
 sql = SQLTaskConfig
 py = PythonTaskConfig
 
-__version__ = '0.1'
+__version__ = '0.2'
 
 
 def run(config, task_ids=None):

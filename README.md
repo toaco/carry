@@ -1,4 +1,4 @@
-# Carry ![](https://img.shields.io/badge/python-2.7-blue.svg) ![](https://badge.fury.io/py/carry.svg) ![](https://landscape.io/github/toaco/carry/master/landscape.svg?style=flat)
+# Carry ![](https://img.shields.io/badge/python-2.7,3.5,3.6-blue.svg) ![](https://badge.fury.io/py/carry.svg) ![](https://landscape.io/github/toaco/carry/master/landscape.svg?style=flat)
 
 [中文文档](./docs/README_zh_CN.md)
 
@@ -137,6 +137,6 @@ The Python task is a Python callable object (such as a function, method, or clas
 ]
 ```
 
-## Contribution
+# Contribution
 
 I'm grateful to everyone to contribute bugfixes and improvements.

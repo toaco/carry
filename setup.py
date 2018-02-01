@@ -42,7 +42,7 @@ setup(
 
     packages=find_packages(exclude=['test*']),
 
-    install_requires=['tqdm', 'pandas', 'sqlalchemy'],
+    install_requires=['tqdm', 'pandas', 'sqlalchemy', 'six'],
 
     python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*',
 
