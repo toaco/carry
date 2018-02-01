@@ -10,17 +10,22 @@ from carry.logger import logger
 from carry.task import TaskFactory, RDBToRDBTask, RDBToCSVTask
 from carry.utils import topological_find
 
+_thread_count = 0
+_work_queue = Queue()
+
 
 class ThreadPoolManger(object):
     def __init__(self, thread_num):
-        self.work_queue = Queue()
+        self.work_queue = _work_queue
         self.thread_num = thread_num
         self.__init_threading_pool(self.thread_num)
 
     def __init_threading_pool(self, thread_num):
-        for i in range(thread_num):
+        global _thread_count
+        for i in range(_thread_count, thread_num):
             thread = ThreadManger(self.work_queue)
             thread.start()
+        _thread_count = thread_num
 
     def add_job(self, func, *args):
         self.work_queue.put((func, args))
