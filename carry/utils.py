@@ -105,3 +105,22 @@ def topological_find(graph, auto_delete=False):
                     gv.remove(r)
 
     return result
+
+
+def topological_remove(graph, node):
+    del graph[node]
+
+    def dfs(node):
+        removed = []
+        for g in graph:
+            dependency = graph.get(g, ())
+            if node in dependency:
+                removed.append(g)
+        for r in removed:
+            del graph[r]
+        for r in removed:
+            dfs(r)
+
+    dfs(node)
+
+    return graph

@@ -132,9 +132,9 @@ def rename_chunk_size(config):
 class RDB(Store):
     def __init__(self, name, url, create_view=False, view_prefix='', tables=None, echo=False):
         self.url = url
-        if url.startswith('mysql'):
+        try:
             self.engine = sqlalchemy.create_engine(url, echo=echo, server_side_cursors=True)
-        else:
+        except TypeError:
             self.engine = sqlalchemy.create_engine(url, echo=echo)
 
         self.create_view = create_view

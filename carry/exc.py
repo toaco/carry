@@ -6,7 +6,8 @@ class CarryError(Exception):
 
 
 class NoSuchTableError(CarryError):
-    pass
+    def __init__(self, table_name):
+        self.message = 'Can not find the table: ' + table_name
 
 
 class ProducerError(CarryError):
@@ -17,8 +18,9 @@ class ConsumerError(CarryError):
     pass
 
 
-class NoSuchColumnError(CarryError):
-    pass
+class NoSuchColumnsError(CarryError):
+    def __init__(self, columns):
+        self.message = 'Can not find those columns: ' + ', '.join(columns)
 
 
 class ExceptionHistory(object):

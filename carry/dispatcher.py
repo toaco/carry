@@ -8,7 +8,7 @@ from six.moves.queue import Queue
 from carry import exc
 from carry.logger import logger
 from carry.task import TaskFactory, RDBToRDBTask, RDBToCSVTask
-from carry.utils import topological_find
+from carry.utils import topological_find, topological_remove
 
 _thread_count = 0
 _work_queue = Queue()
@@ -88,9 +88,12 @@ class TaskDispatcher(object):
             except Exception as e:
                 logger.exception(e)
 
-    def notify(self, task_id):
+    def notify(self, task_id, task_done=True):
         with self._lock:
-            self._finish(task_id)
+            if task_done:
+                self._finish(task_id)
+            else:
+                self._stop(task_id)
             self._publish()
 
     def _executable_tasks(self):
@@ -103,3 +106,6 @@ class TaskDispatcher(object):
         for value in self._dependency.values():
             if value and task_name in value:
                 value.remove(task_name)
+
+    def _stop(self, task_name):
+        topological_remove(self._dependency, task_name)

@@ -61,4 +61,4 @@ def test():
     assert count == 0
 
     assert exc.exceptions.size == 1
-    assert isinstance(exc.exceptions[0], exc.NoSuchColumnError)
+    assert isinstance(exc.exceptions[0], exc.NoSuchColumnsError)

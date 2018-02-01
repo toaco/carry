@@ -1,4 +1,4 @@
-from carry.utils import topological_find
+from carry.utils import topological_find, topological_remove
 
 
 def test_topological_find_simple():
@@ -29,3 +29,23 @@ def test_topological_find_2_components():
     assert topological_find(graph2, True) == {'c', 'e'}
     assert topological_find(graph2, True) == {'a'}
     assert topological_find(graph2, True) == set()
+
+
+def test_topological_remove():
+    graph2 = {
+        'a': ['b'],
+        'b': ['c', 'e'],
+        'c': [],
+        'e': ['f']
+    }
+    assert topological_remove(graph2, 'c') == {
+        'e': ['f']
+    }
+
+
+def test_topological_remove2():
+    graph2 = {
+        'a': ['b', 'c'],
+        'c': ['d'],
+    }
+    assert topological_remove(graph2, 'c') == {}

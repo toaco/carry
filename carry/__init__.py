@@ -19,13 +19,17 @@ __version__ = '0.1'
 
 
 def run(config, task_ids=None):
-    if isinstance(config, six.string_types):
-        config = imp.load_source('carry.config', config)
-        etl = Carry(config.STORES)
-        etl.execute(config.TASKS, task_ids)
-    elif isinstance(config, dict):
-        etl = Carry(config['STORES'])
-        etl.execute(config['TASKS'], task_ids)
+    try:
+        if isinstance(config, six.string_types):
+            config = imp.load_source('carry.config', config)
+            etl = Carry(config.STORES)
+            etl.execute(config.TASKS, task_ids)
+        elif isinstance(config, dict):
+            etl = Carry(config['STORES'])
+            etl.execute(config['TASKS'], task_ids)
+    except Exception as e:
+        exc.exceptions.add(e)
+        raise
 
 
 class Carry(object):
@@ -33,19 +37,15 @@ class Carry(object):
         self.stores = StoreFactory.create_all(store_configs)
 
     def execute(self, tasks, task_ids):
-        try:
-            task_ids = set(task_ids or ())
-            for i, task in enumerate(tasks):
-                if task_ids and i not in task_ids:
-                    continue
+        task_ids = set(task_ids or ())
+        for i, task in enumerate(tasks):
+            if task_ids and i not in task_ids:
+                continue
 
-                self._execute_task(i, task)
-                logger.info('Finish task  {}'.format(i))
+            self._execute_task(i, task)
+            logger.info('Finish task  {}'.format(i))
 
-            self.stores.drop_created_views()
-        except Exception as e:
-            exc.exceptions.add(e)
-            raise
+        self.stores.drop_created_views()
 
     def _execute_task(self, num, task):
         sources = task.get('from')

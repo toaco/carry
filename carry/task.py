@@ -277,6 +277,7 @@ class RDBToRDBTask(Task):
         self._consumers_num = None
         self._finished_consumers_num = 0
         self._consumer_died = False
+        self._producer_died = False
         self._finished_lock = Lock()
 
     def execute(self, pool=None, watcher=None, consumers_num=3):
@@ -314,9 +315,10 @@ class RDBToRDBTask(Task):
             else:
                 self._put_into_buffer_directly(bar, data, logger)
         except Exception as e:
-            self.task_done = True
             condition = self.shared['condition']
             condition.acquire()
+            self.task_done = True
+            self._producer_died = True
             condition.notify()
             condition.release()
             if isinstance(e, CarryError):
@@ -454,7 +456,7 @@ class RDBToRDBTask(Task):
         with self._finished_lock:
             self._finished_consumers_num += 1
         if self._finished_consumers_num == self._consumers_num:
-            watcher(self.name)
+            watcher(self.name, self.task_done and not self._consumer_died and not self._producer_died)
 
 
 class RDBToCSVTask(RDBToRDBTask):

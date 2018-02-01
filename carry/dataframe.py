@@ -38,7 +38,7 @@ class DFAdapter(object):
         df_columns = set(self.df.columns.values)
         s = set(columns) - df_columns
         if s:
-            raise exc.NoSuchColumnError(s)
+            raise exc.NoSuchColumnsError(s)
 
     def filter_fields(self, header):
         self._check_columns(header)
