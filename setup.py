@@ -1,12 +1,15 @@
 from setuptools import setup, find_packages
 
-import carry
+# set __version__
+__version__ = None
+with open("./carry/version.py") as fp:
+    exec (fp.read())
 
 # http://setuptools.readthedocs.io/en/latest/setuptools.html
 setup(
     name='carry',
 
-    version=carry.__version__,
+    version=__version__,
 
     description='Carry is an utility ETL(extract-transform-load) tool',
     long_description='',

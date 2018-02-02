@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+import copy
 import imp
 
 import six
@@ -10,12 +11,11 @@ from carry.logger import logger
 from carry.store import StoreFactory
 from carry.task import TaskFactory, TaskClassifier, TableTaskConfig, SQLTaskConfig, PythonTaskConfig
 from carry.transform import NoResultFound
+from carry.version import __version__
 
 table = TableTaskConfig
 sql = SQLTaskConfig
 py = PythonTaskConfig
-
-__version__ = '0.2'
 
 
 def run(config, task_ids=None):
@@ -25,6 +25,7 @@ def run(config, task_ids=None):
             etl = Carry(config.STORES)
             etl.execute(config.TASKS, task_ids)
         elif isinstance(config, dict):
+            config = copy.deepcopy(config)
             etl = Carry(config['STORES'])
             etl.execute(config['TASKS'], task_ids)
     except Exception as e:
