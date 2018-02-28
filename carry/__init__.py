@@ -52,14 +52,16 @@ class Carry(object):
         sources = task.get('from')
         dest = task.get('to')
         orders = task.get('orders')
-
+        sourceName =''
+        for source in sources:
+            sourceName=source['name']
         logger.info('Start task {}: Transfer tables from {} to {}'.format(
             num, [source['name'] for source in sources], dest['name'])
         )
 
         # truncate
         tc = TaskClassifier(orders)
-        effected_tables = tc.effected_tables()
+        effected_tables = tc.effected_tables(sourceName,self.stores.stores)
         dest_store = self.stores.find_by_store_name(dest['name'])
         dest_store.truncate(effected_tables)
 

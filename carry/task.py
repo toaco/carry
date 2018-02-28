@@ -48,7 +48,7 @@ class TaskClassifier(object):
     def __init__(self, tasks):
         self.tasks = tasks
 
-    def effected_tables(self):
+    def effected_tables(self,sourceName,stors):
         tables = []
         for task_config in self.tasks:
             if isinstance(task_config, (TableTaskConfig, SQLTaskConfig)):
@@ -66,7 +66,10 @@ class TaskClassifier(object):
                     tables.append(task_config.split('.sql')[0])
                 # TODO
                 elif '.*' in task_config:
-                    pass
+                    for stor in stors:
+                        if sourceName == stor.name:
+                            tbs = stor.materialized_tables
+                            tables.append(tbs)
                 else:
                     raise NotImplementedError
             elif isinstance(task_config, TableTaskConfig):
