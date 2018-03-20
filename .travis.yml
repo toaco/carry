@@ -1,0 +1,28 @@
+language: python
+cache:
+  directories:
+    - "$HOME/.cache/pip"
+    - "$HOME/.pyenv"
+matrix:
+  include:
+    - os: linux
+      dist: trusty
+      sudo: false
+      python: '2.7'
+    - os: linux
+      dist: trusty
+      sudo: false
+      python: '3.5'
+    - os: linux
+      dist: trusty
+      sudo: false
+      python: '3.6'
+  fast_finish: true
+install:
+  - pip install -r requirements.txt
+  - pip install coveralls
+script: py.test
+after_success:
+  - coveralls
+notifications:
+  email: never
