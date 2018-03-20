@@ -234,7 +234,7 @@ class RDB(Store):
         return self.engine.execute(sqlalchemy.text(sql))
 
     def truncate(self, names):
-        names = list(filter(lambda name: name in self.materialized_tables, names))
+        names = list(filter(lambda name: self._convert_table_name(name) in self.materialized_tables,names))
         if names:
             logger.info('Truncate table in {}: {}'.format(self.name, ', '.join(names)))
             self.sql_helper.truncate(names)

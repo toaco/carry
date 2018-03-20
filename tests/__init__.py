@@ -24,6 +24,14 @@ addresses = Table(
     Column('email_address', String, nullable=False, unique=True),
 )
 
+truncate_TableTest = Table(
+    'truncate_TableTest', metadata,
+    Column('id', Integer, primary_key=True),
+    Column('name', String),
+    Column('fullname', String),
+    Column('reg_time', DateTime, nullable=False)
+)
+
 
 class DotDict(dict):
     def __getattr__(self, item):
