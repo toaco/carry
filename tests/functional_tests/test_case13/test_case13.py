@@ -1,26 +1,17 @@
 # -*- coding: utf-8 -*-
 import datetime
 
-from sqlalchemy.engine import reflection
+from sqlalchemy import select, func
 
 import carry
-from tests import users, truncate_TableTest
+from tests import users
 from tests.functional_tests import db1, db2
 from tests.utlis import chdir
 
 
+# test case for pr #2
 def test():
     # Arrange
-    truncate_TableTest.create(db1.engine)
-    truncate_TableTest.create(db2.engine)
-    db1.engine.execute(
-        truncate_TableTest.insert(),
-        [
-            {'name': 'wendy', 'fullname': 'Wendy Williams', 'reg_time': datetime.datetime.now()},
-            {'name': 'wendy', 'fullname': 'Wendy Williams', 'reg_time': datetime.datetime.now()},
-            {'name': 'wendy', 'fullname': 'Wendy Williams', 'reg_time': datetime.datetime.now()}
-        ]
-    )
     users.create(db1.engine)
     users.create(db2.engine)
     db1.engine.execute(
@@ -31,12 +22,18 @@ def test():
             {'name': 'wendy', 'fullname': 'Wendy Williams', 'reg_time': datetime.datetime.now()}
         ]
     )
+    db2.engine.execute(
+        users.insert(),
+        [
+            {'name': 'wendy', 'fullname': 'Wendy Williams', 'reg_time': datetime.datetime.now()},
+            {'name': 'wendy', 'fullname': 'Wendy Williams', 'reg_time': datetime.datetime.now()},
+            {'name': 'wendy', 'fullname': 'Wendy Williams', 'reg_time': datetime.datetime.now()},
+            {'name': 'wendy', 'fullname': 'Wendy Williams', 'reg_time': datetime.datetime.now()},
+            {'name': 'wendy', 'fullname': 'Wendy Williams', 'reg_time': datetime.datetime.now()}
+        ]
+    )
 
     # Act
-    def Assert():
-        inspector = reflection.Inspector.from_engine(db1.engine)
-        assert 'truncate_TableTest' in inspector.get_view_names()
-
     config = {
         'STORES': [
             {
@@ -57,8 +54,7 @@ def test():
                     'name': 'db2',
                 },
                 'orders': [
-                    'truncate_TableTest',
-                    carry.py(Assert, dependency=['truncate_TableTest'])
+                    'UseRs',
                 ],
             }
         ]
@@ -66,5 +62,6 @@ def test():
     with chdir(__file__):
         carry.run(config)
 
-    # Teardown
-    db2.engine.execute('DROP TABLE truncate_TableTest')
+    # Assert
+    count = db2.engine.execute(select([func.count()]).select_from(users)).scalar()
+    assert count == 3

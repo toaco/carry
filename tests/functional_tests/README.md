@@ -12,3 +12,4 @@
 | 10         | header|
 | 11         | header: NoSuchColumnError|
 | 12         | NoSuchTableError|
+| 13         | truncation: not case-sensitive |
