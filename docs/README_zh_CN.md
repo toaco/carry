@@ -1,4 +1,4 @@
-# Carry ![](https://img.shields.io/badge/python-2.7,3.5,3.6-blue.svg) ![](https://badge.fury.io/py/carry.svg) ![](https://landscape.io/github/toaco/carry/master/landscape.svg?style=flat)
+# Carry ![](https://img.shields.io/badge/python-2.7,3.5,3.6-blue.svg) ![](https://badge.fury.io/py/carry.svg) [![Build Status](https://travis-ci.org/toaco/carry.svg?branch=master)](https://travis-ci.org/toaco/carry) ![](https://landscape.io/github/toaco/carry/master/landscape.svg?style=flat) [![Coverage Status](https://coveralls.io/repos/github/toaco/carry/badge.svg?branch=master)](https://coveralls.io/github/toaco/carry?branch=master)
 
 
 Carry是一个基于SQLAlchemy和Pandas实现的数据迁移工具.
