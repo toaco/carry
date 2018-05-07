@@ -1,5 +1,7 @@
 from threading import RLock
 
+from carry.logger import logger
+
 
 class CarryError(Exception):
     pass
@@ -34,6 +36,7 @@ class ExceptionHistory(object):
 
     def add(self, exc):
         with self.lock:
+            logger.exception(exc)
             self.exceptions.append(exc)
 
     def clear(self):
