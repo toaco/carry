@@ -17,8 +17,9 @@ from carry.transform import Dest, Cursor, NoResultFound
 
 
 class TableTaskConfig(object):
-    def __init__(self, name, transformer=None, header=None, get_config=None, put_config=None,
-                 mode=None, dependency=None, source_name=None, effects=None):
+    def __init__(self, name, transformer=None, header=None, get_config=None,
+                 put_config=None, mode=None, dependency=None, source_name=None,
+                 effects=None, context=None):
         self.name = name
         self.transformer = transformer
         self.header = header
@@ -28,6 +29,7 @@ class TableTaskConfig(object):
         self.dependency = dependency
         self.source_name = source_name or name
         self.effects = effects
+        self.context = context
 
 
 class SQLTaskConfig(object):
@@ -48,7 +50,7 @@ class TaskClassifier(object):
     def __init__(self, tasks):
         self.tasks = tasks
 
-    def effected_tables(self,sourceName,stors):
+    def effected_tables(self, source_name, stores):
         tables = []
         for task_config in self.tasks:
             if isinstance(task_config, (TableTaskConfig, SQLTaskConfig)):
@@ -66,9 +68,9 @@ class TaskClassifier(object):
                     tables.append(task_config.split('.sql')[0])
                 # TODO
                 elif '.*' in task_config:
-                    for stor in stors:
-                        if sourceName == stor.name:
-                            tbs = stor.materialized_tables
+                    for store in stores:
+                        if source_name == store.name:
+                            tbs = store.materialized_tables
                             tables.append(tbs)
                 else:
                     raise NotImplementedError
@@ -106,7 +108,8 @@ class TaskFactory(object):
                 self.tasks[subtask.name] = subtask
                 self.task_dependency[subtask.name] = subtask.dependency
 
-        source_tables = dict((task.source_table_name, task.name) for task in self.tasks.values()
+        source_tables = dict((task.source_table_name, task.name)
+                             for task in self.tasks.values()
                              if isinstance(task, RDBToCSVTask))
         for name, dependency in self.task_dependency.items():
             if dependency:
@@ -115,7 +118,8 @@ class TaskFactory(object):
             task = self.tasks[name]
             if isinstance(task, RDBToCSVTask):
                 try:
-                    source_table_dependency = task.source.dependency(task.source_table_name)
+                    source_table_dependency = task.source.dependency(
+                        task.source_table_name)
                 except ValueError:
                     # table not in the source database
                     continue
@@ -144,9 +148,14 @@ class TaskFactory(object):
         # table task
         if isinstance(subtask_config, TableTaskConfig):
             return cls._create_table_task(
-                stores, sources, dest, subtask_config.name, subtask_config.transformer, header=subtask_config.header,
-                get_config=subtask_config.get_config, put_config=subtask_config.put_config, mode=subtask_config.mode,
-                dependency=subtask_config.dependency, source_name=subtask_config.source_name
+                stores, sources, dest, subtask_config.name,
+                subtask_config.transformer,
+                header=subtask_config.header,
+                get_config=subtask_config.get_config,
+                put_config=subtask_config.put_config,
+                mode=subtask_config.mode,
+                dependency=subtask_config.dependency,
+                source_name=subtask_config.source_name
             )
 
         # table task: list or tuple
@@ -158,18 +167,21 @@ class TaskFactory(object):
         # sql task
         if isinstance(subtask_config, SQLTaskConfig):
             dest_store = stores.find_by_store_name(dest['name'])
-            return SQLTask(dest_store, subtask_config.name, subtask_config.dependency)
+            return SQLTask(dest_store, subtask_config.name,
+                           subtask_config.dependency)
 
         # python task
         if callable(subtask_config):
             return PythonTask(subtask_config)
         if isinstance(subtask_config, PythonTaskConfig):
-            return PythonTask(subtask_config.callable_, subtask_config.dependency)
+            return PythonTask(subtask_config.callable_,
+                              subtask_config.dependency)
 
         # string
         if '.' not in subtask_config:
             # table task
-            return cls._create_table_task(stores, sources, dest, subtask_config, transformer)
+            return cls._create_table_task(stores, sources, dest, subtask_config,
+                                          transformer)
         elif '.*' in subtask_config:
             # multiple table tasks
             store_name, _ = subtask_config.split('.*')
@@ -181,7 +193,8 @@ class TaskFactory(object):
                     sources = [source]
                     break
             for table in source_store.ordered_tables:
-                tasks.append(cls._create_table_task(stores, sources, dest, table))
+                tasks.append(
+                    cls._create_table_task(stores, sources, dest, table))
             return tasks
         elif '.sql' in subtask_config:
             # sql task
@@ -192,14 +205,17 @@ class TaskFactory(object):
             raise NotImplementedError
 
     @classmethod
-    def _create_table_task(cls, stores, sources, dest, table_name, transformer=None, header=None,
-                           get_config=None, put_config=None, mode=None, dependency=None, source_name=None):
+    def _create_table_task(cls, stores, sources, dest, table_name,
+                           transformer=None, header=None,
+                           get_config=None, put_config=None, mode=None,
+                           dependency=None, source_name=None):
 
         source_name = source_name or table_name
 
         # find source store
         source_store = stores.find_by_table_name(
-            source_name, store_name_limits=[source['name'] for source in sources])
+            source_name,
+            store_name_limits=[source['name'] for source in sources])
         if not source_store:
             raise exc.NoSuchTableError(source_name)
 
@@ -228,18 +244,21 @@ class TaskFactory(object):
         if isinstance(source_store, RDB) and isinstance(dest_store, RDB):
             get_config = RDBGetConfig(get_config)
             put_config = RDBPutConfig(put_config)
-            return RDBToRDBTask(source_store, dest_store, table_name, get_config, put_config,
-                                transformer, header, dependency, source_name)
+            return RDBToRDBTask(source_store, dest_store, table_name,
+                                get_config, put_config, transformer, header,
+                                dependency, source_name)
         elif isinstance(source_store, RDB) and isinstance(dest_store, CSV):
             get_config = RDBGetConfig(get_config)
             put_config = CSVPutConfig(put_config)
-            return RDBToCSVTask(source_store, dest_store, table_name, get_config, put_config,
-                                transformer, header, dependency, source_name)
+            return RDBToCSVTask(source_store, dest_store, table_name,
+                                get_config, put_config, transformer, header,
+                                dependency, source_name)
         elif isinstance(source_store, CSV) and isinstance(dest_store, RDB):
             get_config = CSVGetConfig(get_config)
             put_config = RDBPutConfig(put_config)
-            return CSVToRDBTask(source_store, dest_store, table_name, get_config, put_config,
-                                transformer, header, dependency, source_name)
+            return CSVToRDBTask(source_store, dest_store, table_name,
+                                get_config, put_config, transformer, header,
+                                dependency, source_name)
         else:
             raise NotImplementedError
 
@@ -257,7 +276,8 @@ class Task(object):
 
 
 class RDBToRDBTask(Task):
-    def __init__(self, source, dest, table, get_config, put_config, transformer=None, header=None, dependency=None,
+    def __init__(self, source, dest, table, get_config, put_config,
+                 transformer=None, header=None, dependency=None,
                  source_table_name=None):
         super(RDBToRDBTask, self).__init__(table, dependency)
         self.source = source
@@ -300,18 +320,22 @@ class RDBToRDBTask(Task):
     def _get_data(self, display_bar=True, logger=None):
         try:
             try:
-                data = self.source.get(self.source_table_name, **self.get_config)
+                data = self.source.get(self.source_table_name,
+                                       **self.get_config)
             except Exception:
-                print('Error occurred when get data from {}!'.format(self.source_table_name))
+                print('Error occurred when get data from {}!'.format(
+                    self.source_table_name))
                 raise
             if display_bar:
                 count = self.source.count(self.source_table_name)
                 with self.progress_bar_lock:
                     bar = tqdm(total=count, unit='rows', position=Task.bar_id,
-                               desc='Transfer table {name}'.format(name=self.table))
+                               desc='Transfer table {name}'.format(
+                                   name=self.table))
                     Task.bar_id += 1
             else:
-                bar = MockProgressbar(desc='Transfer table {name}'.format(name=self.table))
+                bar = MockProgressbar(
+                    desc='Transfer table {name}'.format(name=self.table))
 
             if self.transformer:
                 self._transform(bar, data)
@@ -459,7 +483,10 @@ class RDBToRDBTask(Task):
         with self._finished_lock:
             self._finished_consumers_num += 1
         if self._finished_consumers_num == self._consumers_num:
-            watcher(self.name, self.task_done and not self._consumer_died and not self._producer_died)
+            watcher(self.name,
+                    self.task_done
+                    and not self._consumer_died
+                    and not self._producer_died)
 
 
 class RDBToCSVTask(RDBToRDBTask):

@@ -47,8 +47,8 @@ class StoreCollection(object):
 def convert_table_name(func):
     def _wrapper(self, name, *args, **kw):
         """convert the table name of "name" in store. 
-        if table name is "Table" and store is case insensitive, _raw_name("table") will return 
-        "Table" instead of raising an exception.
+        if table name is "Table" and store is case insensitive, 
+        _raw_name("table") will return "Table" instead of raising an exception.
         """
         if self._case_sensitive:
             if name not in self._tables:
@@ -66,12 +66,14 @@ def convert_table_name(func):
 class Store(object):
     def __init__(self, name, tables, case_sensitive=False):
         """
-        when `case_sensitive` is False, `convert_table_name` will convert input table name to inner
-        table name. this should only be used for method which expected the table already existed in 
+        when `case_sensitive` is False, `convert_table_name` will convert input 
+        table name to inner table name. this should only be used for method 
+        which expected the table already existed in 
         Store.
         
         :param tables: 
-        :param case_sensitive: if False, all API of this class must not care the case of table name
+        :param case_sensitive: if False, all API of this class must not care the
+         case of table name
         """
         self.name = name
         if tables:
@@ -130,10 +132,12 @@ def rename_chunk_size(config):
 
 
 class RDB(Store):
-    def __init__(self, name, url, create_view=False, view_prefix='', tables=None, echo=False):
+    def __init__(self, name, url, create_view=False, view_prefix='',
+                 tables=None, echo=False):
         self.url = url
         try:
-            self.engine = sqlalchemy.create_engine(url, echo=echo, server_side_cursors=True)
+            self.engine = sqlalchemy.create_engine(url, echo=echo,
+                                                   server_side_cursors=True)
         except TypeError:
             self.engine = sqlalchemy.create_engine(url, echo=echo)
 
@@ -173,8 +177,10 @@ class RDB(Store):
         # support counting `.sql` result
         if name in self.name_and_sql_paths:
             sql = self._get_sql(name)
-            return self.engine.scalar(sqlalchemy.text("select count(*) from ({}) T".format(sql)))
-        return self.engine.scalar(sqlalchemy.text("select count(*) from {}".format(name)))
+            return self.engine.scalar(
+                sqlalchemy.text("select count(*) from ({}) T".format(sql)))
+        return self.engine.scalar(
+            sqlalchemy.text("select count(*) from {}".format(name)))
 
     @convert_table_name
     def get(self, name, **config):
@@ -186,7 +192,8 @@ class RDB(Store):
             raise ValueError('{}.sql is empty!'.format(name))
         else:
             if self.create_view:
-                view_name = self.view_prefix + '_' + name if self.view_prefix else name
+                view_name = self.view_prefix + '_' + (name
+                                                      if self.view_prefix else name)
                 self.sql_helper.create_view(view_name, sql)
                 self.created_views.append(view_name)
         data = self._read_sql(sql, **config)
@@ -243,9 +250,11 @@ class RDB(Store):
                 pass
             else:
                 converted_names.append(name)
-        names = list(filter(lambda name: name in self.materialized_tables, converted_names))
+        names = list(filter(lambda name: name in self.materialized_tables,
+                            converted_names))
         if names:
-            logger.info('Truncate table in {}: {}'.format(self.name, ', '.join(names)))
+            logger.info(
+                'Truncate table in {}: {}'.format(self.name, ', '.join(names)))
             self.sql_helper.truncate(names)
 
     def drop_created_views(self):
@@ -311,7 +320,8 @@ class CSV(Store):
         self._update_case_insensitive_names()
 
     def truncate(self, names):
-        logger.info('Truncate table in {}: {}'.format(self.name, ', '.join(names)))
+        logger.info(
+            'Truncate table in {}: {}'.format(self.name, ', '.join(names)))
         for name in names:
             try:
                 path = self.get_path(name)

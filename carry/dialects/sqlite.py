@@ -10,7 +10,8 @@ class SqliteHelper(GenericSqlHelper):
         raise NotImplementedError
 
     def create_view(self, name, sql):
-        self.engine.execute(text('DROP VIEW IF EXISTS {name};'.format(name=name)))
+        self.engine.execute(
+            text('DROP VIEW IF EXISTS {name};'.format(name=name)))
         sql = """
         CREATE VIEW IF NOT EXISTS {name}
         AS {sql}""".format(name=name, sql=sql)
