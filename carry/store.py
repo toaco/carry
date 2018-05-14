@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import os
 
+import jinja2
 import pandas
 import sqlalchemy
 
@@ -105,12 +106,14 @@ class Store(object):
     def ordered_tables(self):
         raise NotImplementedError
 
+    # TODO: context parameter should't be here
     @convert_table_name
-    def count(self, name):
+    def count(self, name, context=None):
         raise NotImplementedError
 
+    # TODO: context parameter should't be here
     @convert_table_name
-    def get(self, name, **config):
+    def get(self, name, context=None, **config):
         raise NotImplementedError
 
     @convert_table_name
@@ -173,19 +176,19 @@ class RDB(Store):
         return name_and_sql_paths
 
     @convert_table_name
-    def count(self, name):
+    def count(self, name, context=None):
         # support counting `.sql` result
         if name in self.name_and_sql_paths:
-            sql = self._get_sql(name)
+            sql = self._get_sql(name, context)
             return self.engine.scalar(
                 sqlalchemy.text("select count(*) from ({}) T".format(sql)))
         return self.engine.scalar(
             sqlalchemy.text("select count(*) from {}".format(name)))
 
     @convert_table_name
-    def get(self, name, **config):
+    def get(self, name, context=None, **config):
         """extract table from rdb"""
-        sql = self._get_sql(name)
+        sql = self._get_sql(name, context)
         if sql is None:
             sql = "select * from {}".format(name)
         elif sql.strip() == '':
@@ -212,13 +215,20 @@ class RDB(Store):
         self._tables.add(name)
         self._update_case_insensitive_names()
 
-    def _get_sql(self, name):
+    # TODO: lru_cache
+    def _get_sql(self, name, context=None):
         if name.endswith('.sql'):
             name = name[:-4]
 
         if name in self.name_and_sql_paths:
             with open(self.name_and_sql_paths[name], 'rb') as fo:
-                return fo.read().decode('utf-8')
+                sql = fo.read().decode('utf-8')
+                if context:
+                    if callable(context):
+                        context = context()
+                    sql_temp = jinja2.Template(sql)
+                    sql = sql_temp.render(context)
+                return sql
 
     def _read_sql(self, sql, **config):
         config = rename_chunk_size(config)
@@ -300,11 +310,11 @@ class CSV(Store):
         return self._tables
 
     @convert_table_name
-    def count(self, name):
+    def count(self, name, context=None):
         raise NotImplementedError
 
     @convert_table_name
-    def get(self, name, **config):
+    def get(self, name, context=None, **config):
         data = self._read_csv(name, config)
         if config.get('chunksize'):
             return DFIteratorAdapter(data)

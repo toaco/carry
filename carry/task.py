@@ -155,7 +155,8 @@ class TaskFactory(object):
                 put_config=subtask_config.put_config,
                 mode=subtask_config.mode,
                 dependency=subtask_config.dependency,
-                source_name=subtask_config.source_name
+                source_name=subtask_config.source_name,
+                context=subtask_config.context
             )
 
         # table task: list or tuple
@@ -208,7 +209,7 @@ class TaskFactory(object):
     def _create_table_task(cls, stores, sources, dest, table_name,
                            transformer=None, header=None,
                            get_config=None, put_config=None, mode=None,
-                           dependency=None, source_name=None):
+                           dependency=None, source_name=None, context=None):
 
         source_name = source_name or table_name
 
@@ -246,13 +247,13 @@ class TaskFactory(object):
             put_config = RDBPutConfig(put_config)
             return RDBToRDBTask(source_store, dest_store, table_name,
                                 get_config, put_config, transformer, header,
-                                dependency, source_name)
+                                dependency, source_name, context)
         elif isinstance(source_store, RDB) and isinstance(dest_store, CSV):
             get_config = RDBGetConfig(get_config)
             put_config = CSVPutConfig(put_config)
             return RDBToCSVTask(source_store, dest_store, table_name,
                                 get_config, put_config, transformer, header,
-                                dependency, source_name)
+                                dependency, source_name,context)
         elif isinstance(source_store, CSV) and isinstance(dest_store, RDB):
             get_config = CSVGetConfig(get_config)
             put_config = RDBPutConfig(put_config)
@@ -278,7 +279,7 @@ class Task(object):
 class RDBToRDBTask(Task):
     def __init__(self, source, dest, table, get_config, put_config,
                  transformer=None, header=None, dependency=None,
-                 source_table_name=None):
+                 source_table_name=None,context=None):
         super(RDBToRDBTask, self).__init__(table, dependency)
         self.source = source
         self.dest = dest
@@ -288,6 +289,7 @@ class RDBToRDBTask(Task):
         self.source_table_name = source_table_name
         self.transformer = transformer
         self.header = header
+        self.context = context
 
         self.shared = {
             'queue': [],
@@ -321,13 +323,14 @@ class RDBToRDBTask(Task):
         try:
             try:
                 data = self.source.get(self.source_table_name,
-                                       **self.get_config)
+                                       context=self.context, **self.get_config)
             except Exception:
                 print('Error occurred when get data from {}!'.format(
                     self.source_table_name))
                 raise
             if display_bar:
-                count = self.source.count(self.source_table_name)
+                count = self.source.count(self.source_table_name,
+                                          context=self.context)
                 with self.progress_bar_lock:
                     bar = tqdm(total=count, unit='rows', position=Task.bar_id,
                                desc='Transfer table {name}'.format(
