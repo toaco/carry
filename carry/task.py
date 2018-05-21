@@ -66,7 +66,6 @@ class TaskClassifier(object):
                     tables.append(task_config)
                 elif '.sql' in task_config:
                     tables.append(task_config.split('.sql')[0])
-                # TODO
                 elif '.*' in task_config:
                     for store in stores:
                         if source_name == store.name:
